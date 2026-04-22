@@ -29,3 +29,10 @@ This document records **cross-cutting decisions** so requirements and implementa
 - **`src/`** — Application code; shared simulation and visual modules should grow here as pages split.
 
 When a decision is ticket-specific only, put it in `req/` and link here if it becomes a global rule.
+
+## Version control (commits)
+
+- Use **[Conventional Commits](https://www.conventionalcommits.org/)**: **`type(scope): description`** (scope optional but encouraged when it clarifies the area).
+- **Types** commonly used here: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
+- **Subject:** imperative mood (“add”, not “added”), about **50–72 characters**, no trailing period.
+- **Body:** optional; use for *why* or breaking changes. **Footer:** `BREAKING CHANGE:` or issue references when needed.
