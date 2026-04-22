@@ -1,5 +1,9 @@
 # Agent instructions: Pourover Visualizer
 
+## Conventions
+
+See [Architecture.md](Architecture.md) for simulation time (seconds), fixed tick `SIMULATION_DT`, and Three.js defaults.
+
 ## Architecture direction
 
 Grow the visualizer as **many independent pages** (separate HTML entry points or routes), each focused on one concept or demo, rather than a single monolithic canvas application.
