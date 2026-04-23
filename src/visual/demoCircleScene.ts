@@ -1,4 +1,19 @@
 import * as THREE from "three"
+import { SIM_TIME_MAX, SIM_TIME_MIN } from "../constants/simulation"
+
+/** Outer world-space X extent (fits default camera); motion uses inner 80% with 10% inset each side. */
+const PATH_X_MIN = -1.65
+const PATH_X_MAX = 1.65
+const PATH_EDGE_PADDING = 0.1
+
+export function circleWorldXFromSimTime(simTime: number): number {
+  const span = PATH_X_MAX - PATH_X_MIN
+  const innerMin = PATH_X_MIN + PATH_EDGE_PADDING * span
+  const innerMax = PATH_X_MAX - PATH_EDGE_PADDING * span
+  const t = Math.min(Math.max(simTime, SIM_TIME_MIN), SIM_TIME_MAX)
+  const u = (t - SIM_TIME_MIN) / (SIM_TIME_MAX - SIM_TIME_MIN)
+  return innerMin + u * (innerMax - innerMin)
+}
 
 export type DemoCircleView = {
   scene: THREE.Scene

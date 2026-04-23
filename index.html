@@ -55,6 +55,46 @@
         color: #18181b;
         font: 14px system-ui, sans-serif;
       }
+      .time-bar-inner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        max-width: 100%;
+      }
+      .time-bar-play {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 5rem;
+        height: 2.5rem;
+        padding: 0;
+        border: 1px solid #d4d4d8;
+        border-radius: 6px;
+        background: #ffffff;
+        color: #18181b;
+        font: inherit;
+        font-size: 1rem;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .time-bar-play:hover {
+        background: #fafafa;
+      }
+      .time-bar-slider {
+        flex: 1;
+        min-width: 0;
+        height: 1.25rem;
+        accent-color: #2563eb;
+      }
+      .time-bar-readout {
+        flex-shrink: 0;
+        font-variant-numeric: tabular-nums;
+        color: #52525b;
+        min-width: 7.5rem;
+        text-align: right;
+      }
       @media (max-width: 640px) {
         #app-shell {
           flex-direction: column;
