@@ -20,15 +20,133 @@
         width: 100%;
         overflow: hidden;
       }
-      #controls-panel {
+      #controls-panel,
+      #observations-panel {
         width: 280px;
         flex-shrink: 0;
         box-sizing: border-box;
         padding: 16px;
-        border-right: 1px solid #e4e4e7;
         background: #f4f4f5;
         color: #18181b;
         font: 14px system-ui, sans-serif;
+      }
+      #controls-panel {
+        border-right: 1px solid #e4e4e7;
+      }
+      #observations-panel {
+        border-left: 1px solid #e4e4e7;
+      }
+      .observations-title {
+        margin: 0 0 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #52525b;
+      }
+      .observation-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 10px;
+        border: 1px solid #d4d4d8;
+        border-radius: 6px;
+        background: #ffffff;
+        font-size: 13px;
+      }
+      .observation-label {
+        color: #3f3f46;
+      }
+      .observation-value {
+        font-variant-numeric: tabular-nums;
+        color: #18181b;
+        font-weight: 500;
+      }
+      .controls-drain {
+        margin: 0;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px 12px;
+        border: 1px solid #d4d4d8;
+        border-radius: 6px;
+        background: #ffffff;
+        color: #18181b;
+      }
+      .controls-drain legend {
+        padding: 0 2px;
+        font-size: 12px;
+        color: #52525b;
+      }
+      .controls-drain-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 6px;
+      }
+      .controls-drain-hint {
+        margin: 0;
+        padding: 4px 0;
+        border: none;
+        background: none;
+        font: inherit;
+        font-size: 13px;
+        color: #3f3f46;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .controls-drain-hint:hover {
+        color: #18181b;
+      }
+      .ios-toggle {
+        position: relative;
+        display: block;
+        width: 3.25rem;
+        height: 2rem;
+        flex-shrink: 0;
+        cursor: pointer;
+      }
+      .ios-toggle-input {
+        position: absolute;
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 1;
+      }
+      .ios-toggle-input:focus-visible + .ios-toggle-ui {
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2563eb;
+      }
+      .ios-toggle-ui {
+        display: block;
+        position: absolute;
+        inset: 0;
+        border-radius: 2rem;
+        background: #e5e5ea;
+        transition: background 0.22s ease;
+        pointer-events: none;
+      }
+      .ios-toggle-ui::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.15),
+          0 1px 3px rgba(0, 0, 0, 0.08);
+        transition: transform 0.22s ease;
+      }
+      .ios-toggle-input:checked + .ios-toggle-ui {
+        background: #34c759;
+      }
+      .ios-toggle-input:checked + .ios-toggle-ui::after {
+        transform: translateX(calc(3.25rem - 1.75rem - 0.25rem));
       }
       #visualizer {
         display: flex;
@@ -45,7 +163,9 @@
         position: relative;
         background: #fafafa;
       }
+      /* Temporarily hidden: play/pause + scrub + readout (keep DOM + `mountTimeBar` for later). */
       #time-bar {
+        display: none;
         flex-shrink: 0;
         box-sizing: border-box;
         min-height: 72px;
@@ -99,10 +219,17 @@
         #app-shell {
           flex-direction: column;
         }
-        #controls-panel {
+        #controls-panel,
+        #observations-panel {
           width: 100%;
+        }
+        #controls-panel {
           border-right: none;
           border-bottom: 1px solid #e4e4e7;
+        }
+        #observations-panel {
+          border-left: none;
+          border-top: 1px solid #e4e4e7;
         }
         #visualizer {
           flex: 1;
