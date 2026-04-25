@@ -22,6 +22,15 @@ Place reusable logic in **clear modules**; names and folder layout may evolve, b
 - When behavior is reused across pages, **extend shared modules** (physics or visual) instead of copying.
 - Keep **page-specific glue** separate from core model and visual code: routing, instructional copy, one-off controls, and experiment-only UI belong with the page.
 
+## BA workflow (requirements-first)
+
+- For new features, default to a **Business Analyst pace**:
+  1. clarify scope and constraints,
+  2. write/update a requirement spec in `req/PVIZ-XXX.md`,
+  3. wait for explicit approval before implementation.
+- Do not implement code immediately after initial feature requests unless the user clearly asks to start implementation.
+- Keep requirements concrete and testable: objective, in-scope, out-of-scope, units, acceptance criteria, and extension points.
+
 ## Deployment note
 
 The project targets **GitHub Pages**. When adding pages, align with the build setup (for example Vite multi-page entries) so each page is reachable from the deployed site.
