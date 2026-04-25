@@ -67,10 +67,19 @@ export function mountTimeBar(
 
   function syncFromPlayhead() {
     if (!sliderDragging) {
-      range.valueAsNumber = playhead.simTime
+      const t = playhead.simTime
+      if (Math.abs(range.valueAsNumber - t) > 1e-9) {
+        range.valueAsNumber = t
+      }
     }
-    refreshReadout()
-    refreshPlayButton()
+    const txt = `${playhead.simTime.toFixed(2)} / ${limits.tMax.toFixed(0)} s`
+    if (readout.textContent !== txt) {
+      readout.textContent = txt
+    }
+    const pressed = playBtn.getAttribute("aria-pressed") === "true"
+    if (pressed !== playhead.playing) {
+      refreshPlayButton()
+    }
   }
 
   playBtn.addEventListener("click", () => {
