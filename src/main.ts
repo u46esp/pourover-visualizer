@@ -1,10 +1,7 @@
 import { SIM_TIME_MAX, SIM_TIME_MIN } from "./constants/simulation"
 import { createPlayheadState, stepPlayhead } from "./simulation/playhead"
 import { mountTimeBar } from "./ui/timeBar"
-import {
-  circleWorldXFromSimTime,
-  createDemoCircleView,
-} from "./visual/demoCircleScene"
+import { createV60SwitchView } from "./visual/v60SwitchScene"
 
 const shell = document.createElement("div")
 shell.id = "app-shell"
@@ -29,7 +26,7 @@ shell.appendChild(controls)
 shell.appendChild(visualizer)
 document.body.appendChild(shell)
 
-const view = createDemoCircleView(canvasHost)
+const view = createV60SwitchView(canvasHost)
 const playhead = createPlayheadState(true)
 const timeBarApi = mountTimeBar(timeBar, playhead, {
   tMin: SIM_TIME_MIN,
@@ -45,7 +42,7 @@ function frame() {
 
   stepPlayhead(playhead, deltaTime)
   timeBarApi.syncFromPlayhead()
-  view.circle.position.x = circleWorldXFromSimTime(playhead.simTime)
+  // simTime is for water flow (PVIZ-002), not V60 world position; brewer stays centered.
 
   view.render()
   requestAnimationFrame(frame)
