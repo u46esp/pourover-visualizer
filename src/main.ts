@@ -1,5 +1,5 @@
 import { V60_SWITCH_DRAIN_TOGGLED_ON } from "./constants/appEvents"
-import { V60_SWITCH_DEFAULT_FLOW_G_PER_S } from "./constants/switchFlow"
+import { V60_SWITCH_MAX_FLOW_G_PER_S } from "./constants/switchFlow"
 import { SIM_TIME_MAX, SIM_TIME_MIN } from "./constants/simulation"
 import { createV60SwitchReservoir, stepV60SwitchDrain } from "./physics/v60SwitchReservoir"
 import { createPlayheadState, stepPlayhead } from "./simulation/playhead"
@@ -101,7 +101,7 @@ function frame() {
   const dtSim = playhead.simTime - simT0
   const { emittedG } = stepV60SwitchDrain(reservoir, {
     switchOpen: drainSwitch.checked,
-    flowRateGPerSec: V60_SWITCH_DEFAULT_FLOW_G_PER_S,
+    flowRateGPerSec: V60_SWITCH_MAX_FLOW_G_PER_S,
     dtSimSec: dtSim,
   })
   const outflowGps = dtSim > 0 ? emittedG / dtSim : 0
