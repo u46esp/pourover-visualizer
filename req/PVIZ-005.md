@@ -62,29 +62,38 @@ Support these profiles in MVP:
 ## Units And Formulas
 
 - Particle size uses relative visual simulation units (dimensionless), not microns.
-- `uniform-grinder`: sample all `N_main` from one normal distribution.
+- `uniform-grinder`: sample all `N_main` from a right-skewed normal distribution (Azzalini skew-normal with skew parameter `alpha`).
 - `bad-grinder`: split `N_main` into fine/coarse hills using normalized weights (`fineHillWeight + coarseHillWeight = 1`).
-- `uniform-with-fine-spike`: sample `N_main` from normal hill and add `N_fine_spike = round(N_main * fineSpikeRatio)` in fine band.
+- `uniform-with-fine-spike`: sample `N_main` from the right-skewed uniform-grinder hill and add `N_fine_spike = round(N_main * fineSpikeRatio)` in the fine band.
 - Apply min/max visual size clamping to prevent unstable rendering.
+- Visual draw radius is derived from size with a formula that gives the smallest particles roughly `0.25x..0.5x` the radius of the largest particles.
+
+## Visual Radius Mapping
+
+- Draw radius (in pixels): `radius(size) = 1 + size * 3`.
+- At `sizeClampMin = 0.25`: `radius ≈ 1.75` px.
+- At `sizeClampMax = 1.8`: `radius ≈ 6.4` px.
+- Smallest-to-largest radius ratio ≈ `0.27` (within `0.25x..0.5x` requirement).
 
 ## MVP Defaults (V1)
 
 - `requestedMainParticles = 200` (fixed in MVP controls).
 - `N_main = 200` by default, still enforced by `N_main = min(requestedMainParticles, 200)`.
 - `defaultSeed = 42` for deterministic generation unless user randomizes seed later.
-- `sizeClampMin = 0.4`, `sizeClampMax = 1.8` in relative visual units.
+- `sizeClampMin = 0.25`, `sizeClampMax = 1.8` in relative visual units.
 - `uniform-grinder` defaults:
   - `mean = 1.0`
   - `stdDev = 0.22`
+  - `skewAlpha = 2.0` (right skew; longer coarse-end tail)
 - `bad-grinder` defaults:
   - `fineHillWeight = 0.5`
   - `coarseHillWeight = 0.5`
-  - `fineMean = 0.72`, `fineStdDev = 0.10`
+  - `fineMean = 0.5`, `fineStdDev = 0.10`
   - `coarseMean = 1.32`, `coarseStdDev = 0.16`
 - `uniform-with-fine-spike` defaults:
-  - base hill uses `uniform-grinder` defaults
+  - base hill uses `uniform-grinder` defaults (right-skewed)
   - `fineSpikeRatio = 0.25`
-  - fine spike band centered near `0.62` with `stdDev = 0.06`
+  - fine spike band centered near `0.40` with `stdDev = 0.08`
 - Suggested MVP particle budget target:
   - `N_total_target <= 260` (main hill plus additive fines) to preserve smooth real-time rendering.
 

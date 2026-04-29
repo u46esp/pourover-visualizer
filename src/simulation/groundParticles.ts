@@ -14,12 +14,11 @@ interface NormalSpec {
 
 const MAX_MAIN_PARTICLES = 200;
 
-// Bed sits between a flat top surface and just above the cone tip. Values are
-// in scene-normalized coordinates where y=0 is the top of the cone and y=1 is
-// the tip. The bed is intentionally shallow so particles look settled, not
-// piled up the cone wall.
-const BED_TOP_Y_NORM = 0.78;
-const BED_BOTTOM_Y_NORM = 0.97;
+// Initial spawn band inside the paper cone. The settling physics in
+// `packGroundParticles` is the source of truth for the final bed shape; this
+// only controls where particles start before gravity + collisions resolve.
+const BED_TOP_Y_NORM = 0.05;
+const BED_BOTTOM_Y_NORM = 0.92;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -49,6 +48,26 @@ function sampleNormal(rng: () => number, spec: NormalSpec): number {
   return spec.mean + z0 * spec.stdDev;
 }
 
+// Azzalini skew-normal sampler. alpha=0 reduces to the standard normal.
+// Positive alpha skews the distribution to the right (longer coarse-end tail),
+// which matches a "good grinder" PSD where most particles cluster near the
+// target size with a thinner tail of slightly larger boulders.
+function sampleSkewNormal(
+  rng: () => number,
+  mean: number,
+  stdDev: number,
+  alpha: number,
+): number {
+  const u1 = Math.max(rng(), 1e-8);
+  const u2 = rng();
+  const r = Math.sqrt(-2 * Math.log(u1));
+  const z0 = r * Math.cos(2 * Math.PI * u2);
+  const z1 = r * Math.sin(2 * Math.PI * u2);
+  const delta = alpha / Math.sqrt(1 + alpha * alpha);
+  const epsilon = delta * Math.abs(z0) + Math.sqrt(1 - delta * delta) * z1;
+  return mean + stdDev * epsilon;
+}
+
 function buildSamples(profile: GrinderProfileId, rng: () => number): number[] {
   const defaults = GROUND_PARTICLE_DEFAULTS;
   const mainCount = Math.min(defaults.requestedMainParticles, MAX_MAIN_PARTICLES);
@@ -68,7 +87,14 @@ function buildSamples(profile: GrinderProfileId, rng: () => number): number[] {
 
   const samples: number[] = [];
   for (let index = 0; index < mainCount; index += 1) {
-    samples.push(sampleNormal(rng, defaults.uniform));
+    samples.push(
+      sampleSkewNormal(
+        rng,
+        defaults.uniform.mean,
+        defaults.uniform.stdDev,
+        defaults.uniform.skewAlpha,
+      ),
+    );
   }
 
   if (profile === "uniform-with-fine-spike") {

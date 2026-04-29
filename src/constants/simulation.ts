@@ -16,24 +16,25 @@ export const DEFAULT_POUROVER_PARAMS = {
 export const GROUND_PARTICLE_DEFAULTS = {
   requestedMainParticles: 200,
   seed: 42,
-  sizeClampMin: 0.4,
+  sizeClampMin: 0.25,
   sizeClampMax: 1.8,
   uniform: {
     mean: 1.0,
     stdDev: 0.22,
+    skewAlpha: 2.0,
   },
   bad: {
     fineHillWeight: 0.5,
     coarseHillWeight: 0.5,
-    fineMean: 0.72,
+    fineMean: 0.5,
     fineStdDev: 0.1,
     coarseMean: 1.32,
     coarseStdDev: 0.16,
   },
   fineSpike: {
     ratio: 0.25,
-    mean: 0.62,
-    stdDev: 0.06,
+    mean: 0.4,
+    stdDev: 0.08,
   },
 } as const;
 

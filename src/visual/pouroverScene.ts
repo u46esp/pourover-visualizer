@@ -1,4 +1,9 @@
 import type { PouroverParams, PouroverSimulationState } from "../model/simulationState";
+import {
+  packGroundParticles,
+  type PackedGroundParticle,
+  type PaperConeGeometry,
+} from "../simulation/groundParticleLayout";
 import { generateGroundParticles, type GroundParticle } from "../simulation/groundParticles";
 
 interface Point {
@@ -16,7 +21,9 @@ export class PouroverScene {
   private height = 1;
   private pixelRatio = 1;
   private particleKey = "";
-  private groundParticles: GroundParticle[] = [];
+  private groundParticlesRaw: GroundParticle[] = [];
+  private groundParticles: PackedGroundParticle[] = [];
+  private lastParticlePackKey = "";
 
   constructor(private readonly host: HTMLElement) {
     const context = this.canvas.getContext("2d");
@@ -39,6 +46,7 @@ export class PouroverScene {
 
   update(state: PouroverSimulationState, params: PouroverParams): void {
     this.ensureGroundParticles(params);
+    this.refreshPackedGroundParticles(params);
     this.clear();
     this.drawScene(state);
   }
@@ -55,6 +63,7 @@ export class PouroverScene {
     this.canvas.width = Math.round(this.width * this.pixelRatio);
     this.canvas.height = Math.round(this.height * this.pixelRatio);
     this.ctx.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
+    this.lastParticlePackKey = "";
   }
 
   private clear(): void {
@@ -82,11 +91,38 @@ export class PouroverScene {
 
   private ensureGroundParticles(params: PouroverParams): void {
     const nextKey = params.grinderProfile;
-    if (this.particleKey === nextKey && this.groundParticles.length > 0) {
+    if (this.particleKey === nextKey && this.groundParticlesRaw.length > 0) {
       return;
     }
-    this.groundParticles = generateGroundParticles(params.grinderProfile);
+    this.groundParticlesRaw = generateGroundParticles(params.grinderProfile);
     this.particleKey = nextKey;
+    this.lastParticlePackKey = "";
+  }
+
+  private refreshPackedGroundParticles(params: PouroverParams): void {
+    if (this.groundParticlesRaw.length === 0) {
+      this.groundParticles = [];
+      return;
+    }
+    const packKey = `${Math.round(this.width)}x${Math.round(this.height)}x${params.grinderProfile}`;
+    if (packKey === this.lastParticlePackKey && this.groundParticles.length > 0) {
+      return;
+    }
+    const bounds = this.getBounds();
+    const cone = this.getConePoints(bounds);
+    const paper = this.getPaperConeGeometry(cone);
+    this.groundParticles = packGroundParticles(this.groundParticlesRaw, paper);
+    this.lastParticlePackKey = packKey;
+  }
+
+  private getPaperConeGeometry(
+    cone: ReturnType<PouroverScene["getConePoints"]>,
+  ): PaperConeGeometry {
+    return {
+      leftTop: { x: cone.leftTop.x + 22, y: cone.leftTop.y + 20 },
+      rightTop: { x: cone.rightTop.x - 22, y: cone.rightTop.y + 20 },
+      tip: { x: cone.tip.x, y: cone.tip.y - 12 },
+    };
   }
 
   private getBounds() {
@@ -258,14 +294,10 @@ export class PouroverScene {
     ctx.fillRect(cone.leftTop.x + 18, topY, bounds.topWidth - 36, bottomY - topY + 16);
 
     this.groundParticles.forEach((particle, index) => {
-      const y = topY + particle.yNorm * (bottomY - topY);
-      const halfWidth = Math.max(4, this.getConeHalfWidthAtY(bounds, y) * 0.82);
-      const x = bounds.centerX - halfWidth + particle.xNorm * halfWidth * 2;
-      const radius = 1.25 + particle.size * 1.2;
       const tone = Math.max(36, Math.min(118, 104 - particle.size * 28 + saturation * 18 + (index % 3) * 4));
 
       ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${tone}, ${Math.max(28, tone - 31)}, ${Math.max(18, tone - 56)}, 0.9)`;
       ctx.fill();
     });
