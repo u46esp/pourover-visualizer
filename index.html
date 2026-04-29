@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coffee Brewing Visualizer</title>
+    <style>
+      :root {
+        color: #271a12;
+        background: #f7f0e6;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      #app {
+        min-height: 100vh;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      .panel {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        padding: 2rem;
+        background: rgba(255, 250, 241, 0.9);
+        border-right: 1px solid rgba(95, 65, 37, 0.15);
+        box-shadow: 12px 0 32px rgba(75, 49, 24, 0.08);
+        z-index: 1;
+      }
+
+      .hero h1 {
+        margin: 0 0 0.5rem;
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        line-height: 0.95;
+        letter-spacing: -0.06em;
+      }
+
+      .hero p,
+      .readout p {
+        margin: 0;
+        color: #6b5541;
+        line-height: 1.55;
+      }
+
+      .control-group {
+        display: grid;
+        gap: 0.65rem;
+        padding: 1rem;
+        background: #fffaf2;
+        border: 1px solid rgba(95, 65, 37, 0.14);
+        border-radius: 18px;
+      }
+
+      .control-group h2 {
+        margin: 0;
+        font-size: 0.75rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #8a6b4e;
+      }
+
+      .field {
+        display: grid;
+        gap: 0.35rem;
+      }
+
+      .field label {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        font-size: 0.9rem;
+        font-weight: 650;
+      }
+
+      .field output {
+        color: #8a4d24;
+        font-variant-numeric: tabular-nums;
+      }
+
+      select,
+      input[type="range"] {
+        width: 100%;
+      }
+
+      select {
+        padding: 0.7rem 0.8rem;
+        color: #2c1c12;
+        background: #fff;
+        border: 1px solid rgba(95, 65, 37, 0.2);
+        border-radius: 12px;
+      }
+
+      input[type="range"] {
+        accent-color: #b8692c;
+      }
+
+      .button-row {
+        display: flex;
+        gap: 0.6rem;
+      }
+
+      button {
+        flex: 1;
+        padding: 0.75rem 0.9rem;
+        color: #fff8ec;
+        background: #3a2518;
+        border: 0;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        color: #3a2518;
+        background: #eadbc6;
+      }
+
+      button.secondary.active-speed {
+        color: #fff8ec;
+        background: #8a4d24;
+      }
+
+      .readout {
+        display: grid;
+        gap: 0.7rem;
+      }
+
+      .stage {
+        position: relative;
+        min-height: 520px;
+        background:
+          radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.9), transparent 28rem),
+          linear-gradient(135deg, #f1dfc7, #d9c0a1);
+      }
+
+      #canvas-host {
+        position: absolute;
+        inset: 0;
+      }
+
+      .stage-note {
+        position: absolute;
+        right: 1rem;
+        bottom: 1rem;
+        max-width: 23rem;
+        padding: 0.85rem 1rem;
+        color: #4c3526;
+        background: rgba(255, 250, 241, 0.76);
+        border: 1px solid rgba(95, 65, 37, 0.16);
+        border-radius: 16px;
+        backdrop-filter: blur(10px);
+      }
+
+      .stage-note strong {
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+
+      @media (max-width: 860px) {
+        .app-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .panel {
+          border-right: 0;
+          border-bottom: 1px solid rgba(95, 65, 37, 0.15);
+        }
+
+        .stage {
+          min-height: 60vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
