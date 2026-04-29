@@ -48,7 +48,7 @@ export class PouroverScene {
     this.ensureGroundParticles(params);
     this.refreshPackedGroundParticles(params);
     this.clear();
-    this.drawScene(state);
+    this.drawScene(state, params);
   }
 
   dispose(): void {
@@ -74,7 +74,7 @@ export class PouroverScene {
     this.ctx.fillRect(0, 0, this.width, this.height);
   }
 
-  private drawScene(state: PouroverSimulationState): void {
+  private drawScene(state: PouroverSimulationState, params: PouroverParams): void {
     const bounds = this.getBounds();
     const cone = this.getConePoints(bounds);
     const water = this.getWaterPoints(bounds, state.waterLevel);
@@ -82,7 +82,7 @@ export class PouroverScene {
     this.drawInputStream(bounds, state);
     this.drawCutawayCone(cone);
     this.drawPaperFilter(cone);
-    this.drawCoffeeGrounds(bounds, cone, state);
+    this.drawCoffeeGrounds(bounds, cone, state, params);
     this.drawWater(water);
     this.drawOutputStream(bounds, mug, state);
     this.drawMug(mug, state);
@@ -272,6 +272,7 @@ export class PouroverScene {
     bounds: ReturnType<PouroverScene["getBounds"]>,
     cone: ReturnType<PouroverScene["getConePoints"]>,
     state: PouroverSimulationState,
+    params: PouroverParams,
   ): void {
     const ctx = this.ctx;
     const topY = cone.leftTop.y + 34;
@@ -295,11 +296,20 @@ export class PouroverScene {
 
     this.groundParticles.forEach((particle, index) => {
       const tone = Math.max(36, Math.min(118, 104 - particle.size * 28 + saturation * 18 + (index % 3) * 4));
+      const highlightFine = params.highlightFines && particle.particleClass === "fine";
 
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${tone}, ${Math.max(28, tone - 31)}, ${Math.max(18, tone - 56)}, 0.9)`;
+      ctx.fillStyle = highlightFine
+        ? "rgba(174, 98, 38, 0.95)"
+        : `rgba(${tone}, ${Math.max(28, tone - 31)}, ${Math.max(18, tone - 56)}, 0.9)`;
       ctx.fill();
+
+      if (highlightFine) {
+        ctx.strokeStyle = "rgba(235, 174, 91, 0.78)";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
     });
 
     ctx.restore();

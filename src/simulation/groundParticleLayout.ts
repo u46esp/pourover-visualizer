@@ -23,6 +23,7 @@ export interface PackedGroundParticle {
   y: number;
   radius: number;
   size: number;
+  particleClass: GroundParticle["particleClass"];
 }
 
 interface Body {
@@ -193,5 +194,6 @@ export function packGroundParticles(
     y: bodies[i].y,
     radius: bodies[i].r,
     size: p.size,
+    particleClass: p.particleClass,
   }));
 }

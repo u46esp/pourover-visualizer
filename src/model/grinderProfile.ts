@@ -12,17 +12,17 @@ export interface GrinderProfileDefinition {
 export const GRINDER_PROFILES: GrinderProfileDefinition[] = [
   {
     id: "uniform-grinder",
-    label: "Uniform grinder",
-    summary: "Single normal hill from fine to coarse.",
+    label: "Zero Fines",
+    summary: "Right-skewed main hill with fines excluded.",
   },
   {
     id: "bad-grinder",
-    label: "Bad grinder",
+    label: "Typical Grinder",
     summary: "Two hills: one fine and one coarse.",
   },
   {
     id: "uniform-with-fine-spike",
-    label: "Uniform + fine spike",
-    summary: "Normal hill with extra fines at the fine end.",
+    label: "Uniform",
+    summary: "Right-skewed main hill with extra fines at the fine end.",
   },
 ];

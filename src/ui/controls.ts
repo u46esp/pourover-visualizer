@@ -16,7 +16,7 @@ interface ControlCallbacks {
   onReset: () => void;
 }
 
-type ParamKey = Exclude<keyof PouroverParams, "grinderProfile">;
+type ParamKey = Exclude<keyof PouroverParams, "grinderProfile" | "highlightFines">;
 
 export class Controls {
   private state: ControlState;
@@ -100,7 +100,7 @@ export class Controls {
     const group = document.createElement("section");
     group.className = "control-group";
     group.innerHTML = "<h2>Grounds</h2>";
-    group.append(this.createGrinderProfileField());
+    group.append(this.createGrinderProfileField(), this.createHighlightFinesField());
     return group;
   }
 
@@ -217,6 +217,27 @@ export class Controls {
     });
 
     field.append(labelElement, select);
+    return field;
+  }
+
+  private createHighlightFinesField(): HTMLElement {
+    const field = document.createElement("div");
+    field.className = "field";
+
+    const labelElement = document.createElement("label");
+    const labelText = document.createElement("span");
+    labelText.textContent = "Highlight fines";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = this.state.params.highlightFines;
+    input.addEventListener("change", () => {
+      this.state.params.highlightFines = input.checked;
+      this.emit();
+    });
+
+    labelElement.append(labelText, input);
+    field.append(labelElement);
     return field;
   }
 

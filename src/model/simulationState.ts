@@ -8,6 +8,7 @@ export interface PouroverParams {
   bedDepth: number;
   paperResistance: number;
   grinderProfile: GrinderProfileId;
+  highlightFines: boolean;
 }
 
 export interface PouroverSimulationState {

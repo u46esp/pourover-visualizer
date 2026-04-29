@@ -11,11 +11,13 @@ export const DEFAULT_POUROVER_PARAMS = {
   bedDepth: 0.5,
   paperResistance: 0.4,
   grinderProfile: "uniform-grinder" as GrinderProfileId,
+  highlightFines: false,
 } as const;
 
 export const GROUND_PARTICLE_DEFAULTS = {
   requestedMainParticles: 200,
   seed: 42,
+  fineSizeThreshold: 0.58,
   sizeClampMin: 0.25,
   sizeClampMax: 1.8,
   uniform: {

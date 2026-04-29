@@ -1,10 +1,13 @@
 import { GROUND_PARTICLE_DEFAULTS } from "../constants/simulation";
 import type { GrinderProfileId } from "../model/grinderProfile";
 
+export type GroundParticleClass = "fine" | "normal";
+
 export interface GroundParticle {
   xNorm: number;
   yNorm: number;
   size: number;
+  particleClass: GroundParticleClass;
 }
 
 interface NormalSpec {
@@ -87,14 +90,13 @@ function buildSamples(profile: GrinderProfileId, rng: () => number): number[] {
 
   const samples: number[] = [];
   for (let index = 0; index < mainCount; index += 1) {
-    samples.push(
-      sampleSkewNormal(
-        rng,
-        defaults.uniform.mean,
-        defaults.uniform.stdDev,
-        defaults.uniform.skewAlpha,
-      ),
+    const size = sampleSkewNormal(
+      rng,
+      defaults.uniform.mean,
+      defaults.uniform.stdDev,
+      defaults.uniform.skewAlpha,
     );
+    samples.push(profile === "uniform-grinder" ? Math.max(size, defaults.fineSizeThreshold + 0.01) : size);
   }
 
   if (profile === "uniform-with-fine-spike") {
@@ -107,6 +109,10 @@ function buildSamples(profile: GrinderProfileId, rng: () => number): number[] {
   return samples;
 }
 
+function classifyGroundParticle(size: number): GroundParticleClass {
+  return size <= GROUND_PARTICLE_DEFAULTS.fineSizeThreshold ? "fine" : "normal";
+}
+
 export function generateGroundParticles(profile: GrinderProfileId, seed = GROUND_PARTICLE_DEFAULTS.seed): GroundParticle[] {
   const rng = createRng(seed + profile.length * 131);
   const rawSizes = buildSamples(profile, rng);
@@ -116,10 +122,12 @@ export function generateGroundParticles(profile: GrinderProfileId, seed = GROUND
     // wall-to-wall at each y, density even per unit area.
     const yNorm = sampleSettledY(rng);
     const xNorm = clamp(rng(), 0.02, 0.98);
+    const clampedSize = clamp(size, GROUND_PARTICLE_DEFAULTS.sizeClampMin, GROUND_PARTICLE_DEFAULTS.sizeClampMax);
     return {
       xNorm,
       yNorm,
-      size: clamp(size, GROUND_PARTICLE_DEFAULTS.sizeClampMin, GROUND_PARTICLE_DEFAULTS.sizeClampMax),
+      size: clampedSize,
+      particleClass: classifyGroundParticle(clampedSize),
     };
   });
 
