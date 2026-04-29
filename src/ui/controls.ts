@@ -1,5 +1,6 @@
 import { PARAM_LIMITS, SIMULATION_DURATION_SEC } from "../constants/simulation";
 import { BREW_METHODS, type BrewMethodId } from "../model/brewMethod";
+import { GRINDER_PROFILES } from "../model/grinderProfile";
 import type { PouroverParams } from "../model/simulationState";
 
 export interface ControlState {
@@ -15,7 +16,7 @@ interface ControlCallbacks {
   onReset: () => void;
 }
 
-type ParamKey = keyof PouroverParams;
+type ParamKey = Exclude<keyof PouroverParams, "grinderProfile">;
 
 export class Controls {
   private state: ControlState;
@@ -60,6 +61,7 @@ export class Controls {
     this.host.append(
       this.createSelectors(),
       this.createFlowRateGroup(),
+      this.createGroundsGroup(),
       this.createTimeGroup(),
     );
   }
@@ -91,6 +93,14 @@ export class Controls {
       ),
     );
 
+    return group;
+  }
+
+  private createGroundsGroup(): HTMLElement {
+    const group = document.createElement("section");
+    group.className = "control-group";
+    group.innerHTML = "<h2>Grounds</h2>";
+    group.append(this.createGrinderProfileField());
     return group;
   }
 
@@ -178,6 +188,31 @@ export class Controls {
 
     select.addEventListener("change", () => {
       this.state.method = select.value as BrewMethodId;
+      this.emit();
+    });
+
+    field.append(labelElement, select);
+    return field;
+  }
+
+  private createGrinderProfileField(): HTMLElement {
+    const field = document.createElement("div");
+    field.className = "field";
+
+    const labelElement = document.createElement("label");
+    labelElement.textContent = "Grinder profile";
+
+    const select = document.createElement("select");
+    GRINDER_PROFILES.forEach((profile) => {
+      const option = document.createElement("option");
+      option.value = profile.id;
+      option.textContent = profile.label;
+      option.selected = profile.id === this.state.params.grinderProfile;
+      select.append(option);
+    });
+
+    select.addEventListener("change", () => {
+      this.state.params.grinderProfile = select.value as PouroverParams["grinderProfile"];
       this.emit();
     });
 

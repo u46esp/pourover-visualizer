@@ -1,4 +1,5 @@
-import type { PouroverSimulationState } from "../model/simulationState";
+import type { PouroverParams, PouroverSimulationState } from "../model/simulationState";
+import { generateGroundParticles, type GroundParticle } from "../simulation/groundParticles";
 
 interface Point {
   x: number;
@@ -14,6 +15,8 @@ export class PouroverScene {
   private width = 1;
   private height = 1;
   private pixelRatio = 1;
+  private particleKey = "";
+  private groundParticles: GroundParticle[] = [];
 
   constructor(private readonly host: HTMLElement) {
     const context = this.canvas.getContext("2d");
@@ -34,7 +37,8 @@ export class PouroverScene {
     this.resize();
   }
 
-  update(state: PouroverSimulationState): void {
+  update(state: PouroverSimulationState, params: PouroverParams): void {
+    this.ensureGroundParticles(params);
     this.clear();
     this.drawScene(state);
   }
@@ -69,10 +73,20 @@ export class PouroverScene {
     this.drawInputStream(bounds, state);
     this.drawCutawayCone(cone);
     this.drawPaperFilter(cone);
+    this.drawCoffeeGrounds(bounds, cone, state);
     this.drawWater(water);
     this.drawOutputStream(bounds, mug, state);
     this.drawMug(mug, state);
     this.drawLabels(bounds, state);
+  }
+
+  private ensureGroundParticles(params: PouroverParams): void {
+    const nextKey = params.grinderProfile;
+    if (this.particleKey === nextKey && this.groundParticles.length > 0) {
+      return;
+    }
+    this.groundParticles = generateGroundParticles(params.grinderProfile);
+    this.particleKey = nextKey;
   }
 
   private getBounds() {
@@ -218,6 +232,47 @@ export class PouroverScene {
     ctx.restore();
   }
 
+  private drawCoffeeGrounds(
+    bounds: ReturnType<PouroverScene["getBounds"]>,
+    cone: ReturnType<PouroverScene["getConePoints"]>,
+    state: PouroverSimulationState,
+  ): void {
+    const ctx = this.ctx;
+    const topY = cone.leftTop.y + 34;
+    const bottomY = cone.tip.y - 15;
+    const saturation = clamp01(state.bedSaturation);
+    const shadeLift = saturation * 24;
+
+    ctx.save();
+    this.pathPolygon([
+      { x: cone.leftTop.x + 22, y: cone.leftTop.y + 20 },
+      { x: cone.tip.x, y: cone.tip.y - 12 },
+      { x: cone.rightTop.x - 22, y: cone.rightTop.y + 20 },
+    ]);
+    ctx.clip();
+
+    const bedGradient = ctx.createLinearGradient(0, topY, 0, bottomY);
+    bedGradient.addColorStop(0, `rgba(${92 + shadeLift}, ${60 + shadeLift * 0.3}, ${37 + shadeLift * 0.12}, 0.36)`);
+    bedGradient.addColorStop(1, `rgba(${72 + shadeLift * 0.55}, ${45 + shadeLift * 0.2}, ${26 + shadeLift * 0.08}, 0.66)`);
+    ctx.fillStyle = bedGradient;
+    ctx.fillRect(cone.leftTop.x + 18, topY, bounds.topWidth - 36, bottomY - topY + 16);
+
+    this.groundParticles.forEach((particle, index) => {
+      const y = topY + particle.yNorm * (bottomY - topY);
+      const halfWidth = Math.max(4, this.getConeHalfWidthAtY(bounds, y) * 0.82);
+      const x = bounds.centerX - halfWidth + particle.xNorm * halfWidth * 2;
+      const radius = 1.25 + particle.size * 1.2;
+      const tone = Math.max(36, Math.min(118, 104 - particle.size * 28 + saturation * 18 + (index % 3) * 4));
+
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${tone}, ${Math.max(28, tone - 31)}, ${Math.max(18, tone - 56)}, 0.9)`;
+      ctx.fill();
+    });
+
+    ctx.restore();
+  }
+
   private drawWater(water: ReturnType<PouroverScene["getWaterPoints"]>): void {
     const ctx = this.ctx;
     const gradient = ctx.createLinearGradient(0, water.leftTop.y, 0, water.leftBottom.y);
@@ -315,6 +370,7 @@ export class PouroverScene {
     ctx.fillStyle = "rgba(55, 36, 24, 0.78)";
     ctx.fillText("cutaway dripper", bounds.centerX - bounds.topWidth * 0.45, bounds.topY - 20);
     ctx.fillText("coffee mug", bounds.centerX - bounds.topWidth * 0.15, bounds.tipY + 132);
+    ctx.fillText("particle coffee bed", bounds.centerX - bounds.topWidth * 0.42, bounds.topY + 64);
 
     ctx.font = "600 12px Inter, system-ui, sans-serif";
     ctx.fillStyle = "rgba(40, 104, 129, 0.88)";

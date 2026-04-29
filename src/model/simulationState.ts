@@ -1,3 +1,5 @@
+import type { GrinderProfileId } from "./grinderProfile";
+
 export interface PouroverParams {
   pourRateGPerSec: number;
   waterAmountG: number;
@@ -5,6 +7,7 @@ export interface PouroverParams {
   clogTendency: number;
   bedDepth: number;
   paperResistance: number;
+  grinderProfile: GrinderProfileId;
 }
 
 export interface PouroverSimulationState {

@@ -117,7 +117,7 @@ function catchUpSimulator(): void {
 
 function renderState(): void {
   const simulationState = simulator.getState(controlState.params);
-  scene.update(simulationState);
+  scene.update(simulationState, controlState.params);
   updateFlowRateReadout(simulationState);
 }
 
