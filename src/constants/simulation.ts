@@ -48,3 +48,13 @@ export const PARAM_LIMITS = {
   bedDepth: { min: 0, max: 1, step: 0.01, unit: "" },
   paperResistance: { min: 0, max: 1, step: 0.01, unit: "" },
 } as const;
+
+export const WATER_STREAM_VISUAL_DEFAULTS = {
+  inRefRateGPerSec: 10,
+  outRefRateGPerSec: 10,
+  inMinWidthPx: 0,
+  inMaxWidthPx: 10,
+  outMinWidthPx: 1.4,
+  outMaxWidthPx: 6.5,
+  outSmoothingTauSec: 0.16,
+} as const;

@@ -1,4 +1,5 @@
 import type { PouroverParams, PouroverSimulationState } from "../model/simulationState";
+import { WATER_STREAM_VISUAL_DEFAULTS } from "../constants/simulation";
 import {
   packGroundParticles,
   type PackedGroundParticle,
@@ -12,6 +13,15 @@ interface Point {
 }
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+const lerp = (start: number, end: number, t: number) => start + (end - start) * t;
+const toDisplayedFlowRate = (valueGPerSec: number) => Number(valueGPerSec.toFixed(1));
+
+interface StreamVisualState {
+  inWidthPx: number;
+  outWidthPx: number;
+  outNormRaw: number;
+  outNormSmooth: number;
+}
 
 export class PouroverScene {
   private readonly canvas = document.createElement("canvas");
@@ -24,6 +34,8 @@ export class PouroverScene {
   private groundParticlesRaw: GroundParticle[] = [];
   private groundParticles: PackedGroundParticle[] = [];
   private lastParticlePackKey = "";
+  private outNormSmooth = 0;
+  private lastStateTimeSec = 0;
 
   constructor(private readonly host: HTMLElement) {
     const context = this.canvas.getContext("2d");
@@ -79,14 +91,55 @@ export class PouroverScene {
     const cone = this.getConePoints(bounds);
     const water = this.getWaterPoints(bounds, state.waterLevel);
     const mug = this.getMugRect(bounds);
-    this.drawInputStream(bounds, state);
+    const streams = this.getStreamVisualState(state);
+    this.drawInputStream(bounds, state, streams);
     this.drawCutawayCone(cone);
     this.drawPaperFilter(cone);
     this.drawCoffeeGrounds(bounds, cone, state, params);
     this.drawWater(water);
-    this.drawOutputStream(bounds, mug, state);
+    this.drawOutputStream(bounds, mug, state, streams);
     this.drawMug(mug, state);
     this.drawLabels(bounds, state);
+  }
+
+  private getStreamVisualState(state: PouroverSimulationState): StreamVisualState {
+    const inNorm = clamp01(
+      state.inflowRateGPerSec / WATER_STREAM_VISUAL_DEFAULTS.inRefRateGPerSec,
+    );
+    // Use the same one-decimal granularity as the UI readout so when flow-out
+    // is shown as 0.0 g/s, output stream visuals are fully hidden.
+    const outflowRateGPerSec = toDisplayedFlowRate(state.outflowRateGPerSec);
+    const outNormRaw = clamp01(
+      outflowRateGPerSec / WATER_STREAM_VISUAL_DEFAULTS.outRefRateGPerSec,
+    );
+
+    const dtSec = Math.max(0, state.timeSec - this.lastStateTimeSec);
+    if (outNormRaw <= 1e-6) {
+      this.outNormSmooth = 0;
+    } else if (dtSec <= 0 || state.timeSec < this.lastStateTimeSec) {
+      this.outNormSmooth = outNormRaw;
+    } else {
+      const alpha =
+        1 -
+        Math.exp(-dtSec / Math.max(1e-6, WATER_STREAM_VISUAL_DEFAULTS.outSmoothingTauSec));
+      this.outNormSmooth += alpha * (outNormRaw - this.outNormSmooth);
+    }
+    this.lastStateTimeSec = state.timeSec;
+
+    return {
+      inWidthPx: lerp(
+        WATER_STREAM_VISUAL_DEFAULTS.inMinWidthPx,
+        WATER_STREAM_VISUAL_DEFAULTS.inMaxWidthPx,
+        inNorm,
+      ),
+      outWidthPx: lerp(
+        WATER_STREAM_VISUAL_DEFAULTS.outMinWidthPx,
+        WATER_STREAM_VISUAL_DEFAULTS.outMaxWidthPx,
+        this.outNormSmooth,
+      ),
+      outNormRaw,
+      outNormSmooth: this.outNormSmooth,
+    };
   }
 
   private ensureGroundParticles(params: PouroverParams): void {
@@ -191,13 +244,17 @@ export class PouroverScene {
   private drawInputStream(
     bounds: ReturnType<PouroverScene["getBounds"]>,
     state: PouroverSimulationState,
+    streams: StreamVisualState,
   ): void {
     const ctx = this.ctx;
-    const intensity = Math.max(0.16, state.flowIntensity);
+    const inNorm = clamp01(
+      state.inflowRateGPerSec / WATER_STREAM_VISUAL_DEFAULTS.inRefRateGPerSec,
+    );
+    const intensity = Math.max(0.14, inNorm);
 
     ctx.save();
     ctx.strokeStyle = `rgba(89, 183, 214, ${0.35 + intensity * 0.5})`;
-    ctx.lineWidth = 4 + intensity * 2;
+    ctx.lineWidth = streams.inWidthPx;
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(bounds.centerX - bounds.topWidth * 0.08, bounds.topY - 92);
@@ -346,14 +403,19 @@ export class PouroverScene {
     bounds: ReturnType<PouroverScene["getBounds"]>,
     mug: ReturnType<PouroverScene["getMugRect"]>,
     state: PouroverSimulationState,
+    streams: StreamVisualState,
   ): void {
+    if (toDisplayedFlowRate(state.outflowRateGPerSec) <= 0) {
+      return;
+    }
+
     const ctx = this.ctx;
-    const intensity = Math.max(0.08, state.dripIntensity);
+    const intensity = clamp01(streams.outNormSmooth);
     const targetY = mug.y + 8;
 
     ctx.save();
-    ctx.strokeStyle = `rgba(78, 149, 178, ${0.22 + intensity * 0.68})`;
-    ctx.lineWidth = 3 + intensity * 2;
+    ctx.strokeStyle = `rgba(78, 149, 178, ${0.1 + intensity * 0.8})`;
+    ctx.lineWidth = streams.outWidthPx;
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(bounds.centerX, bounds.tipY + 1);
@@ -362,11 +424,11 @@ export class PouroverScene {
 
     const dropletCount = 3;
     for (let index = 0; index < dropletCount; index += 1) {
-      const progress = (state.timeSec * (0.55 + intensity) + index / dropletCount) % 1;
+      const progress = (state.timeSec * (0.52 + intensity * 0.78) + index / dropletCount) % 1;
       const y = bounds.tipY + 8 + progress * (targetY - bounds.tipY - 16);
       ctx.beginPath();
-      ctx.arc(bounds.centerX, y, 1.8 + intensity * 2.4, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(78, 149, 178, ${0.22 + intensity * 0.68})`;
+      ctx.arc(bounds.centerX, y, Math.max(0.8, streams.outWidthPx * 0.44), 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(78, 149, 178, ${0.1 + intensity * 0.8})`;
       ctx.fill();
     }
     ctx.restore();
