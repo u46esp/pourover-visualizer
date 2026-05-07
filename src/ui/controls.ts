@@ -1,4 +1,4 @@
-import { PARAM_LIMITS, SIMULATION_DURATION_SEC } from "../constants/simulation";
+import { PARAM_LIMITS } from "../constants/simulation";
 import { BREW_METHODS, type BrewMethodId } from "../model/brewMethod";
 import { GRINDER_PROFILES } from "../model/grinderProfile";
 import type { PouroverParams } from "../model/simulationState";
@@ -22,7 +22,6 @@ export class Controls {
   private state: ControlState;
   private readonly outputs = new Map<string, HTMLOutputElement>();
   private playButton!: HTMLButtonElement;
-  private timeInput!: HTMLInputElement;
   private readonly speedButtons = new Map<1 | 2 | 4, HTMLButtonElement>();
 
   constructor(
@@ -48,7 +47,6 @@ export class Controls {
 
   setTime(timeSec: number): void {
     this.state.timeSec = timeSec;
-    this.timeInput.value = timeSec.toFixed(1);
     this.updateOutput("timeSec", `${timeSec.toFixed(1)} s`);
   }
 
@@ -109,16 +107,12 @@ export class Controls {
     group.className = "control-group";
     group.innerHTML = "<h2>Time</h2>";
 
-    const timeField = this.createRangeField(
+    const timeField = this.createReadOnlyField(
       "Brew time",
       "timeSec",
       this.state.timeSec,
-      0,
-      SIMULATION_DURATION_SEC,
-      0.1,
       "s",
     );
-    this.timeInput = timeField.querySelector("input")!;
 
     this.playButton = document.createElement("button");
     this.playButton.type = "button";
@@ -280,6 +274,27 @@ export class Controls {
     });
 
     field.append(labelElement, input);
+    this.updateOutput(key, this.formatValue(value, unit));
+    return field;
+  }
+
+  private createReadOnlyField(
+    label: string,
+    key: "timeSec",
+    value: number,
+    unit: string,
+  ): HTMLElement {
+    const field = document.createElement("div");
+    field.className = "field";
+
+    const labelElement = document.createElement("label");
+    const labelText = document.createElement("span");
+    labelText.textContent = label;
+    const output = document.createElement("output");
+    this.outputs.set(key, output);
+    labelElement.append(labelText, output);
+
+    field.append(labelElement);
     this.updateOutput(key, this.formatValue(value, unit));
     return field;
   }

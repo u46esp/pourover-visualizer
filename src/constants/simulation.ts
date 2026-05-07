@@ -1,7 +1,7 @@
 import type { GrinderProfileId } from "../model/grinderProfile";
 
 export const SIMULATION_DT_SEC = 1 / 60;
-export const SIMULATION_DURATION_SEC = 90;
+export const SIMULATION_DURATION_SEC = 300;
 
 export const DEFAULT_POUROVER_PARAMS = {
   pourRateGPerSec: 6,
