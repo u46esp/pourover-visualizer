@@ -52,7 +52,7 @@ export const PARAM_LIMITS = {
 export const WATER_STREAM_VISUAL_DEFAULTS = {
   inRefRateGPerSec: 10,
   outRefRateGPerSec: 10,
-  inMinWidthPx: 0,
+  inMinWidthPx: 2,
   inMaxWidthPx: 10,
   outMinWidthPx: 1.4,
   outMaxWidthPx: 6.5,

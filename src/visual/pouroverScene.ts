@@ -17,10 +17,13 @@ const lerp = (start: number, end: number, t: number) => start + (end - start) * 
 const toDisplayedFlowRate = (valueGPerSec: number) => Number(valueGPerSec.toFixed(1));
 
 interface StreamVisualState {
+  inNormRaw: number;
   inWidthPx: number;
+  inDisplayedRateGPerSec: number;
   outWidthPx: number;
   outNormRaw: number;
   outNormSmooth: number;
+  outDisplayedRateGPerSec: number;
 }
 
 export class PouroverScene {
@@ -92,19 +95,20 @@ export class PouroverScene {
     const water = this.getWaterPoints(bounds, state.waterLevel);
     const mug = this.getMugRect(bounds);
     const streams = this.getStreamVisualState(state);
-    this.drawInputStream(bounds, state, streams);
     this.drawCutawayCone(cone);
     this.drawPaperFilter(cone);
     this.drawCoffeeGrounds(bounds, cone, state, params);
     this.drawWater(water);
+    this.drawInputStream(bounds, state, streams);
     this.drawOutputStream(bounds, mug, state, streams);
     this.drawMug(mug, state);
     this.drawLabels(bounds, state);
   }
 
   private getStreamVisualState(state: PouroverSimulationState): StreamVisualState {
+    const inflowRateGPerSec = toDisplayedFlowRate(state.inflowRateGPerSec);
     const inNorm = clamp01(
-      state.inflowRateGPerSec / WATER_STREAM_VISUAL_DEFAULTS.inRefRateGPerSec,
+      inflowRateGPerSec / WATER_STREAM_VISUAL_DEFAULTS.inRefRateGPerSec,
     );
     // Use the same one-decimal granularity as the UI readout so when flow-out
     // is shown as 0.0 g/s, output stream visuals are fully hidden.
@@ -127,11 +131,13 @@ export class PouroverScene {
     this.lastStateTimeSec = state.timeSec;
 
     return {
+      inNormRaw: inNorm,
       inWidthPx: lerp(
         WATER_STREAM_VISUAL_DEFAULTS.inMinWidthPx,
         WATER_STREAM_VISUAL_DEFAULTS.inMaxWidthPx,
         inNorm,
       ),
+      inDisplayedRateGPerSec: inflowRateGPerSec,
       outWidthPx: lerp(
         WATER_STREAM_VISUAL_DEFAULTS.outMinWidthPx,
         WATER_STREAM_VISUAL_DEFAULTS.outMaxWidthPx,
@@ -139,6 +145,7 @@ export class PouroverScene {
       ),
       outNormRaw,
       outNormSmooth: this.outNormSmooth,
+      outDisplayedRateGPerSec: outflowRateGPerSec,
     };
   }
 
@@ -246,28 +253,29 @@ export class PouroverScene {
     state: PouroverSimulationState,
     streams: StreamVisualState,
   ): void {
-    const ctx = this.ctx;
-    const inNorm = clamp01(
-      state.inflowRateGPerSec / WATER_STREAM_VISUAL_DEFAULTS.inRefRateGPerSec,
+    if (streams.inDisplayedRateGPerSec <= 0) {
+      return;
+    }
+    const startY = bounds.topY - 92;
+    const endY = bounds.topY + 52;
+    const intensity = clamp01(streams.inNormRaw);
+    this.drawVerticalStream(
+      bounds.centerX,
+      startY,
+      endY,
+      streams.inWidthPx,
+      intensity,
+      "78, 149, 178",
     );
-    const intensity = Math.max(0.14, inNorm);
-
-    ctx.save();
-    ctx.strokeStyle = `rgba(89, 183, 214, ${0.35 + intensity * 0.5})`;
-    ctx.lineWidth = streams.inWidthPx;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(bounds.centerX - bounds.topWidth * 0.08, bounds.topY - 92);
-    ctx.bezierCurveTo(
-      bounds.centerX - bounds.topWidth * 0.09,
-      bounds.topY - 38,
-      bounds.centerX - bounds.topWidth * 0.06,
-      bounds.topY + 12,
-      bounds.centerX - bounds.topWidth * 0.04,
-      bounds.topY + 52,
+    this.drawStreamDroplets(
+      bounds.centerX,
+      startY,
+      endY,
+      streams.inWidthPx,
+      intensity,
+      state.timeSec,
+      "78, 149, 178",
     );
-    ctx.stroke();
-    ctx.restore();
   }
 
   private drawCutawayCone(cone: ReturnType<PouroverScene["getConePoints"]>): void {
@@ -405,30 +413,83 @@ export class PouroverScene {
     state: PouroverSimulationState,
     streams: StreamVisualState,
   ): void {
-    if (toDisplayedFlowRate(state.outflowRateGPerSec) <= 0) {
+    if (streams.outDisplayedRateGPerSec <= 0) {
+      return;
+    }
+
+    const intensity = clamp01(streams.outNormSmooth);
+    const targetY = mug.y + 8;
+    this.drawVerticalStream(
+      bounds.centerX,
+      bounds.tipY + 1,
+      targetY,
+      streams.outWidthPx,
+      intensity,
+      "78, 149, 178",
+    );
+
+    this.drawStreamDroplets(
+      bounds.centerX,
+      bounds.tipY + 8,
+      targetY,
+      streams.outWidthPx,
+      intensity,
+      state.timeSec,
+      "78, 149, 178",
+    );
+  }
+
+  private drawVerticalStream(
+    x: number,
+    startY: number,
+    endY: number,
+    widthPx: number,
+    intensity: number,
+    rgb: string,
+  ): void {
+    const safeIntensity = clamp01(Number.isFinite(intensity) ? intensity : 0);
+    const safeWidthPx = Math.max(0, Number.isFinite(widthPx) ? widthPx : 0);
+    if (safeWidthPx <= 0) {
       return;
     }
 
     const ctx = this.ctx;
-    const intensity = clamp01(streams.outNormSmooth);
-    const targetY = mug.y + 8;
-
     ctx.save();
-    ctx.strokeStyle = `rgba(78, 149, 178, ${0.1 + intensity * 0.8})`;
-    ctx.lineWidth = streams.outWidthPx;
+    ctx.globalAlpha = 0.1 + safeIntensity * 0.8;
+    ctx.strokeStyle = `rgb(${rgb})`;
+    ctx.lineWidth = safeWidthPx;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(bounds.centerX, bounds.tipY + 1);
-    ctx.lineTo(bounds.centerX, targetY);
+    ctx.moveTo(x, startY);
+    ctx.lineTo(x, endY);
     ctx.stroke();
+    ctx.restore();
+  }
 
+  private drawStreamDroplets(
+    x: number,
+    startY: number,
+    endY: number,
+    widthPx: number,
+    intensity: number,
+    timeSec: number,
+    rgb: string,
+  ): void {
+    const safeIntensity = clamp01(Number.isFinite(intensity) ? intensity : 0);
+    const safeWidthPx = Math.max(0, Number.isFinite(widthPx) ? widthPx : 0);
+    if (safeIntensity <= 0 || safeWidthPx <= 0) {
+      return;
+    }
+
+    const ctx = this.ctx;
     const dropletCount = 3;
+    ctx.save();
+    ctx.fillStyle = `rgba(${rgb}, ${0.1 + safeIntensity * 0.8})`;
     for (let index = 0; index < dropletCount; index += 1) {
-      const progress = (state.timeSec * (0.52 + intensity * 0.78) + index / dropletCount) % 1;
-      const y = bounds.tipY + 8 + progress * (targetY - bounds.tipY - 16);
+      const progress = (timeSec * (0.13 + safeIntensity * 0.195) + index / dropletCount) % 1;
+      const y = startY + progress * (endY - startY);
       ctx.beginPath();
-      ctx.arc(bounds.centerX, y, Math.max(0.8, streams.outWidthPx * 0.44), 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(78, 149, 178, ${0.1 + intensity * 0.8})`;
+      ctx.arc(x, y, Math.max(0.8, safeWidthPx * 0.44), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
