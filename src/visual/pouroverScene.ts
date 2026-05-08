@@ -99,7 +99,7 @@ export class PouroverScene {
     this.drawPaperFilter(cone);
     this.drawCoffeeGrounds(bounds, cone, state, params);
     this.drawWater(water);
-    this.drawInputStream(bounds, state, streams);
+    this.drawInputStream(bounds, water, state, streams);
     this.drawOutputStream(bounds, mug, state, streams);
     this.drawMug(mug, state);
     this.drawLabels(bounds, state);
@@ -250,6 +250,7 @@ export class PouroverScene {
 
   private drawInputStream(
     bounds: ReturnType<PouroverScene["getBounds"]>,
+    water: ReturnType<PouroverScene["getWaterPoints"]>,
     state: PouroverSimulationState,
     streams: StreamVisualState,
   ): void {
@@ -257,7 +258,7 @@ export class PouroverScene {
       return;
     }
     const startY = bounds.topY - 92;
-    const endY = bounds.topY + 52;
+    const endY = this.getWaterSurfaceCenterY(water);
     const intensity = clamp01(streams.inNormRaw);
     this.drawVerticalStream(
       bounds.centerX,
@@ -276,6 +277,10 @@ export class PouroverScene {
       state.timeSec,
       "78, 149, 178",
     );
+  }
+
+  private getWaterSurfaceCenterY(water: ReturnType<PouroverScene["getWaterPoints"]>): number {
+    return water.leftTop.y + 4;
   }
 
   private drawCutawayCone(cone: ReturnType<PouroverScene["getConePoints"]>): void {
