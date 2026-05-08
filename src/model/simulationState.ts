@@ -11,6 +11,11 @@ export interface PouroverParams {
   highlightFines: boolean;
 }
 
+export interface KettleTipState {
+  xNorm: number;
+  yNorm: number;
+}
+
 export interface PouroverSimulationState {
   timeSec: number;
   pouredWaterG: number;
@@ -26,4 +31,5 @@ export interface PouroverSimulationState {
   earlyExtractionIntensity: number;
   lateExtractionIntensity: number;
   dripIntensity: number;
+  kettleTip: KettleTipState;
 }

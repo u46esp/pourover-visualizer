@@ -1,4 +1,9 @@
-import { DEFAULT_POUROVER_PARAMS, SIMULATION_DT_SEC, SIMULATION_DURATION_SEC } from "./constants/simulation";
+import {
+  DEFAULT_POUROVER_PARAMS,
+  PARAM_LIMITS,
+  SIMULATION_DT_SEC,
+  SIMULATION_DURATION_SEC,
+} from "./constants/simulation";
 import type { PouroverSimulationState } from "./model/simulationState";
 import { createPouroverSimulator } from "./simulation/pouroverHeuristic";
 import { Controls, type ControlState } from "./ui/controls";
@@ -41,8 +46,30 @@ const canvasHost = getElement("#canvas-host");
 const flowInRateOutput = getElement<HTMLOutputElement>("#flow-in-rate");
 const flowOutRateOutput = getElement<HTMLOutputElement>("#flow-out-rate");
 
-const scene = new PouroverScene(canvasHost);
 const simulator = createPouroverSimulator();
+const scene = new PouroverScene(canvasHost, {
+  onKettleTipChange(nextTip) {
+    simulator.setKettleTip(nextTip);
+  },
+  onPourRateNudge(deltaSteps) {
+    const limits = PARAM_LIMITS.pourRateGPerSec;
+    const current = controlState.params.pourRateGPerSec;
+    const next = Math.max(
+      limits.min,
+      Math.min(limits.max, current + deltaSteps * limits.step),
+    );
+    if (Math.abs(next - current) < 1e-9) {
+      return;
+    }
+    controls.setState({
+      ...controlState,
+      params: {
+        ...controlState.params,
+        pourRateGPerSec: Number(next.toFixed(2)),
+      },
+    });
+  },
+});
 
 const initialState: ControlState = {
   method: "pourover",

@@ -1,4 +1,4 @@
-import type { PouroverParams, PouroverSimulationState } from "../model/simulationState";
+import type { KettleTipState, PouroverParams, PouroverSimulationState } from "../model/simulationState";
 import { WATER_STREAM_VISUAL_DEFAULTS } from "../constants/simulation";
 import {
   packGroundParticles,
@@ -39,8 +39,27 @@ export class PouroverScene {
   private lastParticlePackKey = "";
   private outNormSmooth = 0;
   private lastStateTimeSec = 0;
+  private isDraggingKettle = false;
+  private dragPointerId: number | null = null;
+  private dragOffset: Point = { x: 0, y: 0 };
+  private lastState: PouroverSimulationState | null = null;
+  private lastParams: PouroverParams | null = null;
+  private wheelDeltaAccumulator = 0;
+  private touchAdjustMode = false;
+  private touchAdjustAccumulator = 0;
+  private readonly touchPointerIds = new Set<number>();
+  private readonly pointerPositions = new Map<number, Point>();
+  private longPressTimerId: number | null = null;
+  private longPressPointerId: number | null = null;
+  private longPressStartPoint: Point | null = null;
 
-  constructor(private readonly host: HTMLElement) {
+  constructor(
+    private readonly host: HTMLElement,
+    private readonly options: {
+      onKettleTipChange?: (tip: KettleTipState) => void;
+      onPourRateNudge?: (deltaSteps: number) => void;
+    } = {},
+  ) {
     const context = this.canvas.getContext("2d");
 
     if (!context) {
@@ -53,6 +72,12 @@ export class PouroverScene {
     this.canvas.style.width = "100%";
     this.canvas.style.height = "100%";
     host.append(this.canvas);
+    this.canvas.addEventListener("pointerdown", this.onPointerDown);
+    this.canvas.addEventListener("pointermove", this.onPointerMove);
+    this.canvas.addEventListener("pointerup", this.onPointerUp);
+    this.canvas.addEventListener("pointerleave", this.onPointerUp);
+    this.canvas.addEventListener("pointercancel", this.onPointerUp);
+    this.canvas.addEventListener("wheel", this.onWheel, { passive: false });
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.host);
@@ -60,6 +85,8 @@ export class PouroverScene {
   }
 
   update(state: PouroverSimulationState, params: PouroverParams): void {
+    this.lastState = state;
+    this.lastParams = params;
     this.ensureGroundParticles(params);
     this.refreshPackedGroundParticles(params);
     this.clear();
@@ -68,6 +95,13 @@ export class PouroverScene {
 
   dispose(): void {
     this.resizeObserver.disconnect();
+    this.cancelLongPress();
+    this.canvas.removeEventListener("pointerdown", this.onPointerDown);
+    this.canvas.removeEventListener("pointermove", this.onPointerMove);
+    this.canvas.removeEventListener("pointerup", this.onPointerUp);
+    this.canvas.removeEventListener("pointerleave", this.onPointerUp);
+    this.canvas.removeEventListener("pointercancel", this.onPointerUp);
+    this.canvas.removeEventListener("wheel", this.onWheel);
     this.host.replaceChildren();
   }
 
@@ -95,11 +129,13 @@ export class PouroverScene {
     const water = this.getWaterPoints(bounds, state.waterLevel);
     const mug = this.getMugRect(bounds);
     const streams = this.getStreamVisualState(state);
+    const kettleTip = this.kettleTipToPoint(state.kettleTip);
+    this.drawKettle(kettleTip);
     this.drawCutawayCone(cone);
     this.drawPaperFilter(cone);
     this.drawCoffeeGrounds(bounds, cone, state, params);
     this.drawWater(water);
-    this.drawInputStream(bounds, water, state, streams);
+    this.drawInputStream(kettleTip, water, state, streams);
     this.drawOutputStream(bounds, mug, state, streams);
     this.drawMug(mug, state);
     this.drawLabels(bounds, state);
@@ -249,7 +285,7 @@ export class PouroverScene {
   }
 
   private drawInputStream(
-    bounds: ReturnType<PouroverScene["getBounds"]>,
+    kettleTip: Point,
     water: ReturnType<PouroverScene["getWaterPoints"]>,
     state: PouroverSimulationState,
     streams: StreamVisualState,
@@ -257,11 +293,11 @@ export class PouroverScene {
     if (streams.inDisplayedRateGPerSec <= 0) {
       return;
     }
-    const startY = bounds.topY - 92;
+    const startY = kettleTip.y;
     const endY = this.getWaterSurfaceCenterY(water);
     const intensity = clamp01(streams.inNormRaw);
     this.drawVerticalStream(
-      bounds.centerX,
+      kettleTip.x,
       startY,
       endY,
       streams.inWidthPx,
@@ -269,7 +305,7 @@ export class PouroverScene {
       "78, 149, 178",
     );
     this.drawStreamDroplets(
-      bounds.centerX,
+      kettleTip.x,
       startY,
       endY,
       streams.inWidthPx,
@@ -281,6 +317,249 @@ export class PouroverScene {
 
   private getWaterSurfaceCenterY(water: ReturnType<PouroverScene["getWaterPoints"]>): number {
     return water.leftTop.y + 4;
+  }
+
+  private clampKettleTip(tip: Point): Point {
+    return {
+      x: Math.max(26, Math.min(this.width - 26, tip.x)),
+      y: Math.max(24, Math.min(this.height * 0.62, tip.y)),
+    };
+  }
+
+  private drawKettle(tip: Point): void {
+    const ctx = this.ctx;
+    const bodyCenter = { x: tip.x - 72, y: tip.y - 42 };
+    const bodyWidth = 124;
+    const bodyHeight = 86;
+    const handleCenter = { x: bodyCenter.x - bodyWidth * 0.44, y: bodyCenter.y - 2 };
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(41, 51, 60, 0.9)";
+    ctx.lineWidth = 4;
+    ctx.fillStyle = "rgba(170, 178, 186, 0.9)";
+    ctx.beginPath();
+    ctx.ellipse(bodyCenter.x, bodyCenter.y, bodyWidth * 0.5, bodyHeight * 0.5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(bodyCenter.x + 28, bodyCenter.y - 18);
+    ctx.quadraticCurveTo(tip.x - 20, tip.y - 8, tip.x, tip.y);
+    ctx.strokeStyle = "rgba(46, 56, 65, 0.95)";
+    ctx.lineWidth = 7;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(handleCenter.x, handleCenter.y, 18, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(48, 58, 66, 0.9)";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(32, 40, 48, 0.95)";
+    ctx.fill();
+    ctx.restore();
+  }
+
+  private renderFromCachedState(): void {
+    if (!this.lastState || !this.lastParams) {
+      return;
+    }
+    this.clear();
+    this.drawScene(this.lastState, this.lastParams);
+  }
+
+  private readonly onPointerDown = (event: PointerEvent): void => {
+    if (!this.lastState) {
+      return;
+    }
+    const pointer = this.getPointer(event);
+    this.pointerPositions.set(event.pointerId, pointer);
+    if (event.pointerType === "touch") {
+      this.touchPointerIds.add(event.pointerId);
+    }
+
+    if (this.isDraggingKettle && event.pointerType === "touch" && this.dragPointerId !== event.pointerId) {
+      this.touchAdjustMode = true;
+      this.cancelLongPress();
+      this.touchAdjustAccumulator = 0;
+      this.canvas.setPointerCapture(event.pointerId);
+      event.preventDefault();
+      return;
+    }
+
+    if (this.isDraggingKettle) {
+      return;
+    }
+    const kettleTip = this.kettleTipToPoint(this.lastState.kettleTip);
+    const dx = pointer.x - kettleTip.x;
+    const dy = pointer.y - kettleTip.y;
+    if (Math.hypot(dx, dy) > 84) {
+      return;
+    }
+    this.isDraggingKettle = true;
+    this.dragPointerId = event.pointerId;
+    this.dragOffset = { x: dx, y: dy };
+    this.wheelDeltaAccumulator = 0;
+    this.touchAdjustMode = false;
+    this.touchAdjustAccumulator = 0;
+    this.canvas.setPointerCapture(event.pointerId);
+
+    if (event.pointerType === "touch") {
+      this.longPressPointerId = event.pointerId;
+      this.longPressStartPoint = pointer;
+      this.longPressTimerId = window.setTimeout(() => {
+        if (
+          this.isDraggingKettle &&
+          this.dragPointerId === event.pointerId &&
+          this.touchPointerIds.size === 1
+        ) {
+          this.touchAdjustMode = true;
+          this.touchAdjustAccumulator = 0;
+        }
+        this.cancelLongPress();
+      }, 350);
+      event.preventDefault();
+    }
+  };
+
+  private readonly onPointerMove = (event: PointerEvent): void => {
+    if (!this.isDraggingKettle || !this.lastState) {
+      return;
+    }
+    const pointer = this.getPointer(event);
+    const previous = this.pointerPositions.get(event.pointerId);
+    this.pointerPositions.set(event.pointerId, pointer);
+
+    if (event.pointerType === "touch" && this.longPressPointerId === event.pointerId && !this.touchAdjustMode) {
+      const start = this.longPressStartPoint;
+      if (start && Math.hypot(pointer.x - start.x, pointer.y - start.y) > 8) {
+        this.cancelLongPress();
+      }
+    }
+
+    if (event.pointerType === "touch" && this.touchAdjustMode) {
+      if (previous) {
+        this.applyVerticalPourRateDelta(pointer.y - previous.y);
+      }
+      event.preventDefault();
+      return;
+    }
+
+    if (this.dragPointerId !== event.pointerId) {
+      return;
+    }
+
+    const nextTip = {
+      x: pointer.x - this.dragOffset.x,
+      y: pointer.y - this.dragOffset.y,
+    };
+    const clampedTip = this.clampKettleTip(nextTip);
+    const nextKettleTip = this.pointToKettleTip(clampedTip);
+    this.lastState = {
+      ...this.lastState,
+      kettleTip: nextKettleTip,
+    };
+    this.options.onKettleTipChange?.(nextKettleTip);
+    this.renderFromCachedState();
+  };
+
+  private readonly onPointerUp = (event: PointerEvent): void => {
+    this.pointerPositions.delete(event.pointerId);
+    this.touchPointerIds.delete(event.pointerId);
+    this.cancelLongPressIfMatching(event.pointerId);
+
+    if (!this.isDraggingKettle) {
+      return;
+    }
+    if (event.pointerType === "touch") {
+      if (this.touchPointerIds.size <= 1) {
+        this.touchAdjustMode = false;
+        this.touchAdjustAccumulator = 0;
+      }
+    }
+
+    if (this.dragPointerId !== event.pointerId) {
+      if (this.canvas.hasPointerCapture(event.pointerId)) {
+        this.canvas.releasePointerCapture(event.pointerId);
+      }
+      return;
+    }
+
+    this.isDraggingKettle = false;
+    this.dragPointerId = null;
+    this.wheelDeltaAccumulator = 0;
+    this.touchAdjustMode = false;
+    this.touchAdjustAccumulator = 0;
+    this.cancelLongPress();
+    if (this.canvas.hasPointerCapture(event.pointerId)) {
+      this.canvas.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  private readonly onWheel = (event: WheelEvent): void => {
+    if (!this.isDraggingKettle) {
+      return;
+    }
+    event.preventDefault();
+    const normalizedDelta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+    this.wheelDeltaAccumulator += normalizedDelta;
+    const stepThresholdPx = 40;
+    const stepCount = Math.trunc(this.wheelDeltaAccumulator / stepThresholdPx);
+    if (stepCount === 0) {
+      return;
+    }
+    this.wheelDeltaAccumulator -= stepCount * stepThresholdPx;
+    this.options.onPourRateNudge?.(-stepCount);
+  };
+
+  private applyVerticalPourRateDelta(deltaY: number): void {
+    this.touchAdjustAccumulator += deltaY;
+    const stepThresholdPx = 28;
+    const stepCount = Math.trunc(this.touchAdjustAccumulator / stepThresholdPx);
+    if (stepCount === 0) {
+      return;
+    }
+    this.touchAdjustAccumulator -= stepCount * stepThresholdPx;
+    this.options.onPourRateNudge?.(-stepCount);
+  }
+
+  private cancelLongPress(): void {
+    if (this.longPressTimerId !== null) {
+      window.clearTimeout(this.longPressTimerId);
+      this.longPressTimerId = null;
+    }
+    this.longPressPointerId = null;
+    this.longPressStartPoint = null;
+  }
+
+  private cancelLongPressIfMatching(pointerId: number): void {
+    if (this.longPressPointerId === pointerId) {
+      this.cancelLongPress();
+    }
+  }
+
+  private getPointer(event: PointerEvent): Point {
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  }
+
+  private kettleTipToPoint(kettleTip: KettleTipState): Point {
+    return this.clampKettleTip({
+      x: clamp01(kettleTip.xNorm) * this.width,
+      y: clamp01(kettleTip.yNorm) * this.height,
+    });
+  }
+
+  private pointToKettleTip(point: Point): KettleTipState {
+    return {
+      xNorm: clamp01(point.x / Math.max(1, this.width)),
+      yNorm: clamp01(point.y / Math.max(1, this.height)),
+    };
   }
 
   private drawCutawayCone(cone: ReturnType<PouroverScene["getConePoints"]>): void {

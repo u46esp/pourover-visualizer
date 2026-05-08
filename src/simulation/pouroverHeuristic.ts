@@ -1,4 +1,4 @@
-import type { PouroverParams, PouroverSimulationState } from "../model/simulationState";
+import type { KettleTipState, PouroverParams, PouroverSimulationState } from "../model/simulationState";
 
 interface InternalState {
   timeSec: number;
@@ -14,12 +14,14 @@ interface InternalState {
   flowIntensity: number;
   pressureIntensity: number;
   dripIntensity: number;
+  kettleTip: KettleTipState;
 }
 
 export interface PouroverSimulator {
   readonly timeSec: number;
   reset(): void;
   step(params: PouroverParams, dtSec: number): void;
+  setKettleTip(tip: KettleTipState): void;
   getState(params: PouroverParams): PouroverSimulationState;
 }
 
@@ -41,6 +43,7 @@ function createInitialState(): InternalState {
     flowIntensity: 0,
     pressureIntensity: 0,
     dripIntensity: 0,
+    kettleTip: { xNorm: 0.5, yNorm: 0.1 },
   };
 }
 
@@ -59,6 +62,12 @@ export function createPouroverSimulator(): PouroverSimulator {
         return;
       }
       stepPourover(state, params, dtSec);
+    },
+    setKettleTip(tip) {
+      state.kettleTip = {
+        xNorm: clamp01(tip.xNorm),
+        yNorm: clamp01(tip.yNorm),
+      };
     },
     getState(params) {
       return toPublicState(state, params);
@@ -134,5 +143,6 @@ function toPublicState(
     earlyExtractionIntensity: state.earlyExtractionIntensity,
     lateExtractionIntensity: state.lateExtractionIntensity,
     dripIntensity: state.dripIntensity,
+    kettleTip: state.kettleTip,
   };
 }
