@@ -57,7 +57,7 @@ export class Controls {
   private render(): void {
     this.host.replaceChildren();
     this.host.append(
-      this.createSelectors(),
+      // this.createSelectors(),
       this.createFlowRateGroup(),
       this.createGroundsGroup(),
       this.createTimeGroup(),

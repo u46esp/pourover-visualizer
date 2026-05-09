@@ -37,6 +37,8 @@ export class PouroverScene {
   private static readonly KETTLE_DRAW_SIZE = { width: 240, height: 160 };
   private static readonly VIEW_ZOOM_MIN = 0.35;
   private static readonly VIEW_ZOOM_MAX = 3.5;
+  /** Initial zoom (80% of prior full-scale default). Reset returns here via Ctrl/⌘+0. */
+  private static readonly VIEW_ZOOM_DEFAULT = 0.8;
   private readonly canvas = document.createElement("canvas");
   private readonly ctx: CanvasRenderingContext2D;
   private readonly resizeObserver: ResizeObserver;
@@ -65,7 +67,7 @@ export class PouroverScene {
   private longPressPointerId: number | null = null;
   private longPressStartPoint: Point | null = null;
   /** Zoom around stage center; pointer math stays in pre-zoom coordinates. */
-  private viewZoom = 1;
+  private viewZoom = PouroverScene.VIEW_ZOOM_DEFAULT;
 
   constructor(
     private readonly host: HTMLElement,
@@ -85,7 +87,7 @@ export class PouroverScene {
     this.canvas.setAttribute("aria-label", "2D Pourover brewing cutaway");
     this.canvas.setAttribute(
       "title",
-      "Ctrl/⌘ + scroll to zoom. Focus canvas: +/− keys; Ctrl/⌘+0 resets zoom.",
+      "Ctrl/⌘ + scroll to zoom. Focus canvas: +/− keys; Ctrl/⌘+0 restores default zoom.",
     );
     this.canvas.tabIndex = 0;
     this.canvas.style.display = "block";
@@ -284,26 +286,8 @@ export class PouroverScene {
   }
 
   private getBounds() {
-    const w = this.width;
-    const h = this.height;
-    const aspect = w / Math.max(h, 1);
-    // Baseline: independent width/height clamps. On ultrawide stages the height term can
-    // still be huge (short side is height), so blend toward tighter coefficients and add
-    // explicit caps: rim width vs canvas, and √area so panoramic viewports scale down.
-    const sizeLegacy = Math.min(w * 0.78, h * 0.82);
-    const sizeTight = Math.min(w * 0.5, h * 0.66);
-    const squeeze = clamp01((aspect - 1.65) / (2.35 - 1.65));
-    let size = lerp(sizeLegacy, sizeTight, squeeze);
-
-    if (aspect >= 1.55) {
-      const rimFrac = lerp(0.5, 0.26, clamp01((aspect - 1.55) / (3.4 - 1.55)));
-      size = Math.min(size, (w * rimFrac) / 0.88);
-    }
-
-    if (aspect >= 2.05) {
-      size = Math.min(size, Math.sqrt(Math.max(1, w * h)) * 0.485);
-    }
-
+    // Single layout scale from stage dimensions; use canvas zoom for subjective sizing.
+    const size = Math.min(this.width * 0.78, this.height * 0.82);
     const centerX = this.width * 0.52;
     const topY = this.height * 0.16;
     const topWidth = size * 0.88;
@@ -635,7 +619,7 @@ export class PouroverScene {
       this.setViewZoom(this.viewZoom / step);
     } else if (event.key === "0" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
-      this.setViewZoom(1);
+      this.setViewZoom(PouroverScene.VIEW_ZOOM_DEFAULT);
     }
   };
 

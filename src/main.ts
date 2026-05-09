@@ -18,10 +18,7 @@ app.innerHTML = `
   <main class="app-shell">
     <aside class="panel">
       <section class="hero">
-        <h1>Coffee Brewing Visualizer</h1>
-        <p>
-          Bare-bones pourover frame view.
-        </p>
+        <h1>Pourover Visualizer</h1>
       </section>
       <div id="controls"></div>
     </aside>
