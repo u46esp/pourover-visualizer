@@ -63,7 +63,7 @@ const initialState: ControlState = {
   method: "pourover",
   params: { ...DEFAULT_POUROVER_PARAMS },
   timeSec: 0,
-  playing: true,
+  playing: false,
   playbackRate: 1,
 };
 
