@@ -35,6 +35,8 @@ export class PouroverScene {
   private static readonly KETTLE_SPRITE_VIEWBOX = { width: 544, height: 432 };
   private static readonly KETTLE_SPRITE_TIP = { x: 517, y: 134 };
   private static readonly KETTLE_DRAW_SIZE = { width: 240, height: 160 };
+  private static readonly VIEW_ZOOM_MIN = 0.35;
+  private static readonly VIEW_ZOOM_MAX = 3.5;
   private readonly canvas = document.createElement("canvas");
   private readonly ctx: CanvasRenderingContext2D;
   private readonly resizeObserver: ResizeObserver;
@@ -62,6 +64,8 @@ export class PouroverScene {
   private longPressTimerId: number | null = null;
   private longPressPointerId: number | null = null;
   private longPressStartPoint: Point | null = null;
+  /** Zoom around stage center; pointer math stays in pre-zoom coordinates. */
+  private viewZoom = 1;
 
   constructor(
     private readonly host: HTMLElement,
@@ -79,6 +83,11 @@ export class PouroverScene {
     this.ctx = context;
     this.initKettleSprite();
     this.canvas.setAttribute("aria-label", "2D Pourover brewing cutaway");
+    this.canvas.setAttribute(
+      "title",
+      "Ctrl/⌘ + scroll to zoom. Focus canvas: +/− keys; Ctrl/⌘+0 resets zoom.",
+    );
+    this.canvas.tabIndex = 0;
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
     this.canvas.style.height = "100%";
@@ -89,6 +98,7 @@ export class PouroverScene {
     this.canvas.addEventListener("pointerleave", this.onPointerUp);
     this.canvas.addEventListener("pointercancel", this.onPointerUp);
     this.canvas.addEventListener("wheel", this.onWheel, { passive: false });
+    this.canvas.addEventListener("keydown", this.onKeyDown);
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.host);
@@ -113,6 +123,7 @@ export class PouroverScene {
     this.canvas.removeEventListener("pointerleave", this.onPointerUp);
     this.canvas.removeEventListener("pointercancel", this.onPointerUp);
     this.canvas.removeEventListener("wheel", this.onWheel);
+    this.canvas.removeEventListener("keydown", this.onKeyDown);
     this.host.replaceChildren();
   }
 
@@ -135,6 +146,14 @@ export class PouroverScene {
   }
 
   private drawScene(state: PouroverSimulationState, params: PouroverParams): void {
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(this.viewZoom, this.viewZoom);
+    ctx.translate(-cx, -cy);
+
     const bounds = this.getBounds();
     const cone = this.getConePoints(bounds);
     const water = this.getWaterPoints(bounds, state.waterLevel);
@@ -151,6 +170,31 @@ export class PouroverScene {
     this.drawOutputStream(bounds, mug, state, streams);
     this.drawMug(mug, state);
     this.drawLabels(state);
+
+    ctx.restore();
+  }
+
+  private setViewZoom(next: number): void {
+    const clamped = Math.max(
+      PouroverScene.VIEW_ZOOM_MIN,
+      Math.min(PouroverScene.VIEW_ZOOM_MAX, next),
+    );
+    if (Math.abs(clamped - this.viewZoom) < 1e-6) {
+      return;
+    }
+    this.viewZoom = clamped;
+    this.renderFromCachedState();
+  }
+
+  /** Pointer position in scene coordinates (inverse of view zoom around center). */
+  private screenToScene(point: Point): Point {
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    const z = this.viewZoom;
+    return {
+      x: (point.x - cx) / z + cx,
+      y: (point.y - cy) / z + cy,
+    };
   }
 
   private getStreamVisualState(state: PouroverSimulationState): StreamVisualState {
@@ -240,7 +284,26 @@ export class PouroverScene {
   }
 
   private getBounds() {
-    const size = Math.min(this.width * 0.78, this.height * 0.82);
+    const w = this.width;
+    const h = this.height;
+    const aspect = w / Math.max(h, 1);
+    // Baseline: independent width/height clamps. On ultrawide stages the height term can
+    // still be huge (short side is height), so blend toward tighter coefficients and add
+    // explicit caps: rim width vs canvas, and √area so panoramic viewports scale down.
+    const sizeLegacy = Math.min(w * 0.78, h * 0.82);
+    const sizeTight = Math.min(w * 0.5, h * 0.66);
+    const squeeze = clamp01((aspect - 1.65) / (2.35 - 1.65));
+    let size = lerp(sizeLegacy, sizeTight, squeeze);
+
+    if (aspect >= 1.55) {
+      const rimFrac = lerp(0.5, 0.26, clamp01((aspect - 1.55) / (3.4 - 1.55)));
+      size = Math.min(size, (w * rimFrac) / 0.88);
+    }
+
+    if (aspect >= 2.05) {
+      size = Math.min(size, Math.sqrt(Math.max(1, w * h)) * 0.485);
+    }
+
     const centerX = this.width * 0.52;
     const topY = this.height * 0.16;
     const topWidth = size * 0.88;
@@ -558,7 +621,34 @@ export class PouroverScene {
     }
   };
 
+  private readonly onKeyDown = (event: KeyboardEvent): void => {
+    const step = event.shiftKey ? 1.08 : 1.14;
+    const zoomIn =
+      event.key === "+" || event.key === "=" || event.code === "NumpadAdd";
+    const zoomOut =
+      event.key === "-" || event.key === "_" || event.code === "NumpadSubtract";
+    if (zoomIn) {
+      event.preventDefault();
+      this.setViewZoom(this.viewZoom * step);
+    } else if (zoomOut) {
+      event.preventDefault();
+      this.setViewZoom(this.viewZoom / step);
+    } else if (event.key === "0" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      this.setViewZoom(1);
+    }
+  };
+
   private readonly onWheel = (event: WheelEvent): void => {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      const normalizedDelta =
+        event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+      const factor = Math.exp(-normalizedDelta * 0.0014);
+      this.setViewZoom(this.viewZoom * factor);
+      return;
+    }
+
     if (!this.isDraggingKettle) {
       return;
     }
@@ -602,10 +692,10 @@ export class PouroverScene {
 
   private getPointer(event: PointerEvent): Point {
     const rect = this.canvas.getBoundingClientRect();
-    return {
+    return this.screenToScene({
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
-    };
+    });
   }
 
   private kettleTipToPoint(kettleTip: KettleTipState): Point {
