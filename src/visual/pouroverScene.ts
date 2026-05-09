@@ -1,5 +1,5 @@
 import type { KettleTipState, PouroverParams, PouroverSimulationState } from "../model/simulationState";
-import { WATER_STREAM_VISUAL_DEFAULTS } from "../constants/simulation";
+import { PARAM_LIMITS, WATER_STREAM_VISUAL_DEFAULTS } from "../constants/simulation";
 import {
   packGroundParticles,
   type PackedGroundParticle,
@@ -137,7 +137,7 @@ export class PouroverScene {
     const mug = this.getMugRect(bounds);
     const streams = this.getStreamVisualState(state);
     const kettleTip = this.kettleTipToPoint(state.kettleTip);
-    this.drawKettle(kettleTip);
+    this.drawKettle(kettleTip, params);
     this.drawCutawayCone(cone);
     this.drawPaperFilter(cone);
     this.drawCoffeeGrounds(bounds, cone, state, params);
@@ -333,7 +333,7 @@ export class PouroverScene {
     };
   }
 
-  private drawKettle(tip: Point): void {
+  private drawKettle(tip: Point, params: PouroverParams): void {
     if (!this.kettleSpriteLoaded) {
       return;
     }
@@ -342,15 +342,32 @@ export class PouroverScene {
     const drawSize = PouroverScene.KETTLE_DRAW_SIZE;
     const anchor = this.getKettleAnchor();
     const yNorm = clamp01(tip.y / Math.max(1, this.height));
-    const tiltRad = lerp(0.4, 0.18, yNorm);
+    const baseTiltRad = lerp(0.4, 0.18, yNorm);
+    const pourTiltRad = this.getPourRateTiltOffsetRad(params.pourRateGPerSec);
+    const tiltRad = this.clampRad(baseTiltRad + pourTiltRad, 0.05, 0.9);
 
     ctx.save();
     ctx.translate(tip.x, tip.y);
     ctx.rotate(tiltRad);
-    ctx.scale(1,1);
     ctx.translate(-drawSize.width * anchor.x, -drawSize.height * anchor.y);
     ctx.drawImage(this.kettleSprite, 0, 0, drawSize.width, drawSize.height);
     ctx.restore();
+  }
+
+  /**
+   * Tilt follows flow-in rate and holds steady (no decay).
+   * Low pour → nearer horizontal “level”; high pour → steeper pour angle.
+   */
+  private getPourRateTiltOffsetRad(pourRateGPerSec: number): number {
+    const { min, max } = PARAM_LIMITS.pourRateGPerSec;
+    const span = Math.max(1e-6, max - min);
+    const n = clamp01((pourRateGPerSec - min) / span);
+    const pourTiltNorm = lerp(-0.07, 0.18, n);
+    return pourTiltNorm * 2.5;
+  }
+
+  private clampRad(value: number, min: number, max: number): number {
+    return Math.max(min, Math.min(max, value));
   }
 
   private initKettleSprite(): void {

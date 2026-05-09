@@ -41,7 +41,7 @@ export const GROUND_PARTICLE_DEFAULTS = {
 } as const;
 
 export const PARAM_LIMITS = {
-  pourRateGPerSec: { min: 0, max: 12, step: 0.5, unit: "g/s" },
+  pourRateGPerSec: { min: 0, max: 12, step: 0.2, unit: "g/s" },
   waterAmountG: { min: 120, max: 500, step: 10, unit: "g" },
   bedResistance: { min: 0, max: 1, step: 0.01, unit: "" },
   clogTendency: { min: 0, max: 1, step: 0.01, unit: "" },
@@ -50,7 +50,7 @@ export const PARAM_LIMITS = {
 } as const;
 
 export const WATER_STREAM_VISUAL_DEFAULTS = {
-  inRefRateGPerSec: 10,
+  inRefRateGPerSec: 20,
   outRefRateGPerSec: 10,
   inMinWidthPx: 2,
   inMaxWidthPx: 10,
