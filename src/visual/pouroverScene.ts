@@ -1,5 +1,9 @@
 import type { KettleTipState, PouroverParams, PouroverSimulationState } from "../model/simulationState";
-import { PARAM_LIMITS, WATER_STREAM_VISUAL_DEFAULTS } from "../constants/simulation";
+import {
+  CONE_LAYOUT_REFERENCE_HEIGHT_PX,
+  PARAM_LIMITS,
+  WATER_STREAM_VISUAL_DEFAULTS,
+} from "../constants/simulation";
 import {
   packGroundParticles,
   type PackedGroundParticle,
@@ -137,12 +141,13 @@ export class PouroverScene {
     const mug = this.getMugRect(bounds);
     const streams = this.getStreamVisualState(state);
     const kettleTip = this.kettleTipToPoint(state.kettleTip);
+    const coneScale = this.getConeVerticalScale(cone);
     this.drawKettle(kettleTip, params);
     this.drawCutawayCone(cone);
     this.drawPaperFilter(cone);
-    this.drawCoffeeGrounds(bounds, cone, state, params);
+    this.drawCoffeeGrounds(cone, state, params);
     this.drawWater(water);
-    this.drawInputStream(kettleTip, water, state, streams);
+    this.drawInputStream(kettleTip, water, state, streams, coneScale);
     this.drawOutputStream(bounds, mug, state, streams);
     this.drawMug(mug, state);
     this.drawLabels(state);
@@ -218,13 +223,19 @@ export class PouroverScene {
     this.lastParticlePackKey = packKey;
   }
 
+  /** Keeps paper inset and packed-bed geometry proportional when the stage resizes. */
+  private getConeVerticalScale(cone: ReturnType<PouroverScene["getConePoints"]>): number {
+    return Math.max(cone.tip.y - cone.leftTop.y, 1) / CONE_LAYOUT_REFERENCE_HEIGHT_PX;
+  }
+
   private getPaperConeGeometry(
     cone: ReturnType<PouroverScene["getConePoints"]>,
   ): PaperConeGeometry {
+    const s = this.getConeVerticalScale(cone);
     return {
-      leftTop: { x: cone.leftTop.x + 22, y: cone.leftTop.y + 20 },
-      rightTop: { x: cone.rightTop.x - 22, y: cone.rightTop.y + 20 },
-      tip: { x: cone.tip.x, y: cone.tip.y - 12 },
+      leftTop: { x: cone.leftTop.x + 22 * s, y: cone.leftTop.y + 20 * s },
+      rightTop: { x: cone.rightTop.x - 22 * s, y: cone.rightTop.y + 20 * s },
+      tip: { x: cone.tip.x, y: cone.tip.y - 12 * s },
     };
   }
 
@@ -256,10 +267,12 @@ export class PouroverScene {
     bounds: ReturnType<PouroverScene["getBounds"]>,
     waterLevel: number,
   ) {
+    const s =
+      Math.max(bounds.tipY - bounds.topY, 1) / CONE_LAYOUT_REFERENCE_HEIGHT_PX;
     const fill = clamp01(waterLevel);
-    const bottom = bounds.tipY - 16;
+    const bottom = bounds.tipY - 16 * s;
     const topRange = bounds.coneHeight * 0.62;
-    const top = Math.max(bounds.topY + 30, bottom - Math.max(4, fill * topRange));
+    const top = Math.max(bounds.topY + 30 * s, bottom - Math.max(4 * s, fill * topRange));
     const topHalfWidth = this.getConeHalfWidthAtY(bounds, top) * 0.9;
     const bottomHalfWidth = this.getConeHalfWidthAtY(bounds, bottom) * 0.82;
 
@@ -296,12 +309,13 @@ export class PouroverScene {
     water: ReturnType<PouroverScene["getWaterPoints"]>,
     state: PouroverSimulationState,
     streams: StreamVisualState,
+    coneVerticalScale: number,
   ): void {
     if (streams.inDisplayedRateGPerSec <= 0) {
       return;
     }
     const startY = kettleTip.y;
-    const endY = this.getWaterSurfaceCenterY(water);
+    const endY = this.getWaterSurfaceCenterY(water, coneVerticalScale);
     const intensity = clamp01(streams.inNormRaw);
     this.drawVerticalStream(
       kettleTip.x,
@@ -322,8 +336,11 @@ export class PouroverScene {
     );
   }
 
-  private getWaterSurfaceCenterY(water: ReturnType<PouroverScene["getWaterPoints"]>): number {
-    return water.leftTop.y + 4;
+  private getWaterSurfaceCenterY(
+    water: ReturnType<PouroverScene["getWaterPoints"]>,
+    coneVerticalScale: number,
+  ): number {
+    return water.leftTop.y + 4 * coneVerticalScale;
   }
 
   private clampKettleTip(tip: Point): Point {
@@ -644,15 +661,16 @@ export class PouroverScene {
   }
 
   private drawPaperFilter(cone: ReturnType<PouroverScene["getConePoints"]>): void {
+    const paper = this.getPaperConeGeometry(cone);
     const ctx = this.ctx;
     ctx.save();
     ctx.fillStyle = "rgba(242, 235, 219, 0.68)";
     ctx.strokeStyle = "rgba(128, 104, 79, 0.32)";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = Math.max(1, 2 * this.getConeVerticalScale(cone));
     ctx.beginPath();
-    ctx.moveTo(cone.leftTop.x + 22, cone.leftTop.y + 20);
-    ctx.lineTo(cone.tip.x, cone.tip.y - 12);
-    ctx.lineTo(cone.rightTop.x - 22, cone.rightTop.y + 20);
+    ctx.moveTo(paper.leftTop.x, paper.leftTop.y);
+    ctx.lineTo(paper.tip.x, paper.tip.y);
+    ctx.lineTo(paper.rightTop.x, paper.rightTop.y);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -661,22 +679,23 @@ export class PouroverScene {
   }
 
   private drawCoffeeGrounds(
-    bounds: ReturnType<PouroverScene["getBounds"]>,
     cone: ReturnType<PouroverScene["getConePoints"]>,
     state: PouroverSimulationState,
     params: PouroverParams,
   ): void {
     const ctx = this.ctx;
-    const topY = cone.leftTop.y + 34;
-    const bottomY = cone.tip.y - 15;
+    const s = this.getConeVerticalScale(cone);
+    const paper = this.getPaperConeGeometry(cone);
+    const topY = paper.leftTop.y + 14 * s;
+    const bottomY = paper.tip.y - 3 * s;
     const saturation = clamp01(state.bedSaturation);
     const shadeLift = saturation * 24;
 
     ctx.save();
     this.pathPolygon([
-      { x: cone.leftTop.x + 22, y: cone.leftTop.y + 20 },
-      { x: cone.tip.x, y: cone.tip.y - 12 },
-      { x: cone.rightTop.x - 22, y: cone.rightTop.y + 20 },
+      { x: paper.leftTop.x, y: paper.leftTop.y },
+      { x: paper.tip.x, y: paper.tip.y },
+      { x: paper.rightTop.x, y: paper.rightTop.y },
     ]);
     ctx.clip();
 
@@ -684,7 +703,9 @@ export class PouroverScene {
     bedGradient.addColorStop(0, `rgba(${92 + shadeLift}, ${60 + shadeLift * 0.3}, ${37 + shadeLift * 0.12}, 0.36)`);
     bedGradient.addColorStop(1, `rgba(${72 + shadeLift * 0.55}, ${45 + shadeLift * 0.2}, ${26 + shadeLift * 0.08}, 0.66)`);
     ctx.fillStyle = bedGradient;
-    ctx.fillRect(cone.leftTop.x + 18, topY, bounds.topWidth - 36, bottomY - topY + 16);
+    const fillPad = 4 * s;
+    const paperSpanTop = paper.rightTop.x - paper.leftTop.x;
+    ctx.fillRect(paper.leftTop.x - fillPad, topY, paperSpanTop + 2 * fillPad, bottomY - topY + 16 * s);
 
     this.groundParticles.forEach((particle, index) => {
       const tone = Math.max(36, Math.min(118, 104 - particle.size * 28 + saturation * 18 + (index % 3) * 4));
@@ -699,7 +720,7 @@ export class PouroverScene {
 
       if (highlightFine) {
         ctx.strokeStyle = "rgba(235, 174, 91, 0.78)";
-        ctx.lineWidth = 1.2;
+        ctx.lineWidth = Math.max(0.8, 1.2 * s);
         ctx.stroke();
       }
     });

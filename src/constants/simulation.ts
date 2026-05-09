@@ -58,3 +58,12 @@ export const WATER_STREAM_VISUAL_DEFAULTS = {
   outMaxWidthPx: 6.5,
   outSmoothingTauSec: 0.16,
 } as const;
+
+/** Outer cone height (tip − rim) at a mid-size viewport; drives proportional insets and particle scale. */
+export const CONE_LAYOUT_REFERENCE_HEIGHT_PX = 374;
+
+/**
+ * Inner paper cone height at `CONE_LAYOUT_REFERENCE_HEIGHT_PX` with default insets (rim +20px, tip −12px).
+ * Used so packed particle radii scale with the brew chamber, not absolute pixels.
+ */
+export const PAPER_CONE_LAYOUT_REFERENCE_INNER_HEIGHT_PX = 342;

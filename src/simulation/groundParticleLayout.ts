@@ -1,12 +1,11 @@
+import { PAPER_CONE_LAYOUT_REFERENCE_INNER_HEIGHT_PX } from "../constants/simulation";
 import type { GroundParticle } from "./groundParticles";
 
 /**
- * Visual + physics radius shared between simulator and renderer.
- *
- * Maps `size` (relative visual unit, clamped roughly to [0.25, 1.8]) to a
- * pixel radius. Designed so the smallest particles (`size ≈ 0.25`) render at
- * roughly `0.25x..0.5x` the radius of the largest particles (`size ≈ 1.8`):
- * `radius(0.25) ≈ 1.75 px`, `radius(1.8) ≈ 6.4 px` (ratio ≈ 0.27).
+ * Base radius at reference inner cone height (before layout scaling).
+ * Maps `size` (relative visual unit, clamped roughly to [0.25, 1.8]) so the
+ * smallest particles (`size ≈ 0.25`) are roughly `0.27x` the radius of the
+ * largest (`size ≈ 1.8`) at the reference layout.
  */
 export function particleRadiusFromSize(size: number): number {
   return 1 + size * 3;
@@ -139,19 +138,25 @@ export function packGroundParticles(
   const n = particles.length;
   if (n === 0) return [];
 
+  const innerH = Math.max(paper.tip.y - paper.leftTop.y, 1);
+  const layoutScale = innerH / PAPER_CONE_LAYOUT_REFERENCE_INNER_HEIGHT_PX;
+  const marginSpawn = 4 * layoutScale;
+  const wallInset = 1 * layoutScale;
+  const g = GRAVITY * layoutScale;
+
   const leftWall = makeInwardWall(paper.leftTop, paper.tip, 1);
   const rightWall = makeInwardWall(paper.rightTop, paper.tip, -1);
   const walls: Wall[] = [leftWall, rightWall];
 
   const centerX = (paper.leftTop.x + paper.rightTop.x) / 2;
-  const spawnTopY = paper.leftTop.y + 4;
-  const spawnBottomY = paper.tip.y - 4;
+  const spawnTopY = paper.leftTop.y + marginSpawn;
+  const spawnBottomY = paper.tip.y - marginSpawn;
 
   const bodies: Body[] = particles.map((p) => {
-    const r = particleRadiusFromSize(p.size);
+    const r = particleRadiusFromSize(p.size) * layoutScale;
     const mass = PARTICLE_DENSITY * Math.PI * r * r;
     const y = spawnTopY + p.yNorm * (spawnBottomY - spawnTopY);
-    const halfW = Math.max(0, paperHalfWidthAtY(paper, y) - r - 1);
+    const halfW = Math.max(0, paperHalfWidthAtY(paper, y) - r - wallInset);
     const x = centerX + (p.xNorm * 2 - 1) * halfW;
     return { x, y, vx: 0, vy: 0, r, invMass: 1 / mass };
   });
@@ -159,7 +164,7 @@ export function packGroundParticles(
   for (let step = 0; step < MAX_STEPS; step += 1) {
     for (let i = 0; i < n; i += 1) {
       const b = bodies[i];
-      b.vy += GRAVITY * DT;
+      b.vy += g * DT;
       b.vx *= VELOCITY_DAMPING;
       b.vy *= VELOCITY_DAMPING;
       b.x += b.vx * DT;
