@@ -27,9 +27,15 @@ interface StreamVisualState {
 }
 
 export class PouroverScene {
+  /** Must match `kettle.svg` viewBox (pour tip is upper-right of spout opening). */
+  private static readonly KETTLE_SPRITE_VIEWBOX = { width: 544, height: 432 };
+  private static readonly KETTLE_SPRITE_TIP = { x: 517, y: 134 };
+  private static readonly KETTLE_DRAW_SIZE = { width: 240, height: 160 };
   private readonly canvas = document.createElement("canvas");
   private readonly ctx: CanvasRenderingContext2D;
   private readonly resizeObserver: ResizeObserver;
+  private readonly kettleSprite = new Image();
+  private kettleSpriteLoaded = false;
   private width = 1;
   private height = 1;
   private pixelRatio = 1;
@@ -67,6 +73,7 @@ export class PouroverScene {
     }
 
     this.ctx = context;
+    this.initKettleSprite();
     this.canvas.setAttribute("aria-label", "2D Pourover brewing cutaway");
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
@@ -327,39 +334,59 @@ export class PouroverScene {
   }
 
   private drawKettle(tip: Point): void {
+    if (!this.kettleSpriteLoaded) {
+      return;
+    }
+
     const ctx = this.ctx;
-    const bodyCenter = { x: tip.x - 72, y: tip.y - 42 };
-    const bodyWidth = 124;
-    const bodyHeight = 86;
-    const handleCenter = { x: bodyCenter.x - bodyWidth * 0.44, y: bodyCenter.y - 2 };
+    const drawSize = PouroverScene.KETTLE_DRAW_SIZE;
+    const anchor = this.getKettleAnchor();
+    const yNorm = clamp01(tip.y / Math.max(1, this.height));
+    const tiltRad = lerp(0.4, 0.18, yNorm);
 
     ctx.save();
-    ctx.strokeStyle = "rgba(41, 51, 60, 0.9)";
-    ctx.lineWidth = 4;
-    ctx.fillStyle = "rgba(170, 178, 186, 0.9)";
-    ctx.beginPath();
-    ctx.ellipse(bodyCenter.x, bodyCenter.y, bodyWidth * 0.5, bodyHeight * 0.5, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(bodyCenter.x + 28, bodyCenter.y - 18);
-    ctx.quadraticCurveTo(tip.x - 20, tip.y - 8, tip.x, tip.y);
-    ctx.strokeStyle = "rgba(46, 56, 65, 0.95)";
-    ctx.lineWidth = 7;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(handleCenter.x, handleCenter.y, 18, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(48, 58, 66, 0.9)";
-    ctx.lineWidth = 5;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(32, 40, 48, 0.95)";
-    ctx.fill();
+    ctx.translate(tip.x, tip.y);
+    ctx.rotate(tiltRad);
+    ctx.scale(1,1);
+    ctx.translate(-drawSize.width * anchor.x, -drawSize.height * anchor.y);
+    ctx.drawImage(this.kettleSprite, 0, 0, drawSize.width, drawSize.height);
     ctx.restore();
+  }
+
+  private initKettleSprite(): void {
+    this.kettleSprite.onload = () => {
+      this.kettleSpriteLoaded = true;
+      this.renderFromCachedState();
+    };
+    this.kettleSprite.src = new URL("./sprite/kettle.svg", import.meta.url).href;
+  }
+
+  private getKettleAnchor(): Point {
+    return {
+      x: PouroverScene.KETTLE_SPRITE_TIP.x / PouroverScene.KETTLE_SPRITE_VIEWBOX.width,
+      y: PouroverScene.KETTLE_SPRITE_TIP.y / PouroverScene.KETTLE_SPRITE_VIEWBOX.height,
+    };
+  }
+
+  private getKettleHitBox(tip: Point): { x: number; y: number; width: number; height: number } {
+    const drawSize = PouroverScene.KETTLE_DRAW_SIZE;
+    const anchor = this.getKettleAnchor();
+    const margin = 10;
+    return {
+      x: tip.x - drawSize.width * anchor.x - margin,
+      y: tip.y - drawSize.height * anchor.y - margin,
+      width: drawSize.width + margin * 2,
+      height: drawSize.height + margin * 2,
+    };
+  }
+
+  private isPointInRect(point: Point, rect: { x: number; y: number; width: number; height: number }): boolean {
+    return (
+      point.x >= rect.x &&
+      point.x <= rect.x + rect.width &&
+      point.y >= rect.y &&
+      point.y <= rect.y + rect.height
+    );
   }
 
   private renderFromCachedState(): void {
@@ -393,14 +420,13 @@ export class PouroverScene {
       return;
     }
     const kettleTip = this.kettleTipToPoint(this.lastState.kettleTip);
-    const dx = pointer.x - kettleTip.x;
-    const dy = pointer.y - kettleTip.y;
-    if (Math.hypot(dx, dy) > 84) {
+    const hitBox = this.getKettleHitBox(kettleTip);
+    if (!this.isPointInRect(pointer, hitBox)) {
       return;
     }
     this.isDraggingKettle = true;
     this.dragPointerId = event.pointerId;
-    this.dragOffset = { x: dx, y: dy };
+    this.dragOffset = { x: pointer.x - kettleTip.x, y: pointer.y - kettleTip.y };
     this.wheelDeltaAccumulator = 0;
     this.touchAdjustMode = false;
     this.touchAdjustAccumulator = 0;
