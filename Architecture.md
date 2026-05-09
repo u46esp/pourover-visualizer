@@ -21,6 +21,10 @@ The user should eventually be able to choose a brewing method, choose the brewin
 - Keep formulas and assumptions explicit so simplified behavior is understandable.
 - Prefer small TypeScript modules over framework-heavy structure until the product shape justifies more.
 
+## Theory And Physics Reference
+
+Detailed **equation-level** conventions (Darcy’s law, permeability vs grind/bed state, extraction kinetic proxy, thermal coupling, extractives in outflow) live in [Theory.md](Theory.md). Use it when implementing or extending the simulation engine so hydraulics and extraction stay aligned across methods and tickets; product scope and acceptance criteria remain in requirement documents under `req/`.
+
 ## Runtime Shape
 
 ```mermaid
