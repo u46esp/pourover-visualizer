@@ -4,7 +4,6 @@ import {
   SIMULATION_DT_SEC,
   SIMULATION_DURATION_SEC,
 } from "./constants/simulation";
-import type { PouroverSimulationState } from "./model/simulationState";
 import { createPouroverSimulator } from "./simulation/pouroverHeuristic";
 import { Controls, type ControlState } from "./ui/controls";
 import { PouroverScene } from "./visual/pouroverScene";
@@ -25,15 +24,6 @@ app.innerHTML = `
         </p>
       </section>
       <div id="controls"></div>
-      <section class="control-group">
-        <h2>Flow rates</h2>
-        <div class="field">
-          <label><span>Flow-in rate</span><output id="flow-in-rate">0.0 g/s</output></label>
-        </div>
-        <div class="field">
-          <label><span>Flow-out rate</span><output id="flow-out-rate">0.0 g/s</output></label>
-        </div>
-      </section>
     </aside>
     <section class="stage" aria-label="Interactive Pourover visualization">
       <div id="canvas-host"></div>
@@ -43,8 +33,6 @@ app.innerHTML = `
 
 const controlsHost = getElement("#controls");
 const canvasHost = getElement("#canvas-host");
-const flowInRateOutput = getElement<HTMLOutputElement>("#flow-in-rate");
-const flowOutRateOutput = getElement<HTMLOutputElement>("#flow-out-rate");
 
 const simulator = createPouroverSimulator();
 const scene = new PouroverScene(canvasHost, {
@@ -145,14 +133,6 @@ function catchUpSimulator(): void {
 function renderState(): void {
   const simulationState = simulator.getState(controlState.params);
   scene.update(simulationState, controlState.params);
-  updateFlowRateReadout(simulationState);
-}
-
-function updateFlowRateReadout(state: PouroverSimulationState): void {
-  flowInRateOutput.value = `${state.inflowRateGPerSec.toFixed(1)} g/s`;
-  flowInRateOutput.textContent = flowInRateOutput.value;
-  flowOutRateOutput.value = `${state.outflowRateGPerSec.toFixed(1)} g/s`;
-  flowOutRateOutput.textContent = flowOutRateOutput.value;
 }
 
 function getElement<T extends HTMLElement = HTMLElement>(selector: string): T {

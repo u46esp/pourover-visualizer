@@ -138,7 +138,7 @@ export class PouroverScene {
     this.drawInputStream(kettleTip, water, state, streams);
     this.drawOutputStream(bounds, mug, state, streams);
     this.drawMug(mug, state);
-    this.drawLabels(bounds, state);
+    this.drawLabels(state);
   }
 
   private getStreamVisualState(state: PouroverSimulationState): StreamVisualState {
@@ -809,32 +809,21 @@ export class PouroverScene {
     ctx.restore();
   }
 
-  private drawLabels(
-    bounds: ReturnType<PouroverScene["getBounds"]>,
-    state: PouroverSimulationState,
-  ): void {
+  private drawLabels(state: PouroverSimulationState): void {
     const ctx = this.ctx;
-    ctx.save();
-    ctx.font = "600 13px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "rgba(55, 36, 24, 0.78)";
-    ctx.fillText("cutaway dripper", bounds.centerX - bounds.topWidth * 0.45, bounds.topY - 20);
-    ctx.fillText("coffee mug", bounds.centerX - bounds.topWidth * 0.15, bounds.tipY + 132);
-    ctx.fillText("particle coffee bed", bounds.centerX - bounds.topWidth * 0.42, bounds.topY + 64);
+    const padX = 16;
+    const lineGap = 20;
+    const x = this.width - padX;
+    const midY = this.height * 0.5;
 
+    ctx.save();
+    ctx.textAlign = "right";
     ctx.font = "600 12px Inter, system-ui, sans-serif";
     ctx.fillStyle = "rgba(40, 104, 129, 0.88)";
-    ctx.fillText(
-      `flow-in ${state.inflowRateGPerSec.toFixed(1)} g/s`,
-      bounds.centerX - bounds.topWidth * 0.27,
-      bounds.topY - 64,
-    );
+    ctx.fillText(`flow-in ${state.inflowRateGPerSec.toFixed(1)} g/s`, x, midY - lineGap * 0.5);
 
     ctx.fillStyle = "rgba(49, 90, 112, 0.88)";
-    ctx.fillText(
-      `flow-out ${state.outflowRateGPerSec.toFixed(1)} g/s`,
-      bounds.centerX + bounds.topWidth * 0.05,
-      bounds.tipY + 36,
-    );
+    ctx.fillText(`flow-out ${state.outflowRateGPerSec.toFixed(1)} g/s`, x, midY + lineGap * 0.5);
     ctx.restore();
   }
 
