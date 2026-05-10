@@ -102,6 +102,15 @@ This document specifies **requirements only**. Equation-level contracts (Darcy�
 - Bypass fraction splitting outlet concentration between “weak channel” and “bed” sources.
 - Calibration hooks mapping dimensionless model coefficients to user-visible “roast solubility” sliders.
 
+## Decomposed Implementation Tickets
+
+- [PVIZ-008.md](PVIZ-008.md) — Darcy hydraulics core and units contract.
+- [PVIZ-009.md](PVIZ-009.md) — bed/filter resistance coupling from grind and fines state.
+- [PVIZ-010.md](PVIZ-010.md) — extraction start gate and finite-pool kinetics.
+- [PVIZ-011.md](PVIZ-011.md) — minimal thermal coupling.
+- [PVIZ-012.md](PVIZ-012.md) — outflow extractives transport and mass accounting.
+- [PVIZ-013.md](PVIZ-013.md) — extraction/combined aspect state contract.
+
 ## References
 
 - [Theory.md](../Theory.md) — Darcy’s law, coupled equations, and mass-accounting conventions for implementers.
