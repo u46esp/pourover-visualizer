@@ -5,6 +5,7 @@ export const SIMULATION_DURATION_SEC = 300;
 
 export const DEFAULT_POUROVER_PARAMS = {
   pourRateGPerSec: 6,
+  kettleTempC: 90,
   waterAmountG: 300,
   bedResistance: 0.45,
   clogTendency: 0.35,
@@ -42,6 +43,7 @@ export const GROUND_PARTICLE_DEFAULTS = {
 
 export const PARAM_LIMITS = {
   pourRateGPerSec: { min: 0, max: 12, step: 0.2, unit: "g/s" },
+  kettleTempC: { min: 80, max: 100, step: 1, unit: "°C" },
   waterAmountG: { min: 120, max: 500, step: 10, unit: "g" },
   bedResistance: { min: 0, max: 1, step: 0.01, unit: "" },
   clogTendency: { min: 0, max: 1, step: 0.01, unit: "" },

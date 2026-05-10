@@ -171,7 +171,7 @@ export class PouroverScene {
     this.drawInputStream(kettleTip, water, state, streams, coneScale);
     this.drawOutputStream(bounds, mug, state, streams);
     this.drawMug(mug, state);
-    this.drawLabels(state);
+    this.drawLabels(state, params);
 
     ctx.restore();
   }
@@ -947,7 +947,7 @@ export class PouroverScene {
     ctx.restore();
   }
 
-  private drawLabels(state: PouroverSimulationState): void {
+  private drawLabels(state: PouroverSimulationState, params: PouroverParams): void {
     const ctx = this.ctx;
     const padX = 16;
     const lineGap = 20;
@@ -958,10 +958,13 @@ export class PouroverScene {
     ctx.textAlign = "right";
     ctx.font = "600 12px Inter, system-ui, sans-serif";
     ctx.fillStyle = "rgba(40, 104, 129, 0.88)";
-    ctx.fillText(`flow-in ${state.inflowRateGPerSec.toFixed(1)} g/s`, x, midY - lineGap * 0.5);
+    ctx.fillText(`flow-in ${state.inflowRateGPerSec.toFixed(1)} g/s`, x, midY - lineGap);
+
+    ctx.fillStyle = "rgba(150, 78, 32, 0.9)";
+    ctx.fillText(`pour temp ${params.kettleTempC.toFixed(0)} °C`, x, midY);
 
     ctx.fillStyle = "rgba(49, 90, 112, 0.88)";
-    ctx.fillText(`flow-out ${state.outflowRateGPerSec.toFixed(1)} g/s`, x, midY + lineGap * 0.5);
+    ctx.fillText(`flow-out ${state.outflowRateGPerSec.toFixed(1)} g/s`, x, midY + lineGap);
     ctx.restore();
   }
 

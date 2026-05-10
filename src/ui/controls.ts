@@ -78,16 +78,26 @@ export class Controls {
     const group = document.createElement("section");
     group.className = "control-group";
     group.innerHTML = "<h2>Pour</h2>";
-    const limits = PARAM_LIMITS.pourRateGPerSec;
+    const flowLimits = PARAM_LIMITS.pourRateGPerSec;
+    const kettleLimits = PARAM_LIMITS.kettleTempC;
     group.append(
       this.createRangeField(
         "Flow-in rate",
         "pourRateGPerSec",
         this.state.params.pourRateGPerSec,
-        limits.min,
-        limits.max,
-        limits.step,
-        limits.unit,
+        flowLimits.min,
+        flowLimits.max,
+        flowLimits.step,
+        flowLimits.unit,
+      ),
+      this.createRangeField(
+        "Kettle temperature",
+        "kettleTempC",
+        this.state.params.kettleTempC,
+        kettleLimits.min,
+        kettleLimits.max,
+        kettleLimits.step,
+        kettleLimits.unit,
       ),
     );
 
@@ -308,7 +318,12 @@ export class Controls {
   }
 
   private formatValue(value: number, unit: string): string {
-    const precision = unit === "g/s" || unit === "s" ? 1 : unit === "g" ? 0 : 2;
+    const precision =
+      unit === "g/s" || unit === "s"
+        ? 1
+        : unit === "g" || unit === "°C"
+          ? 0
+          : 2;
     return `${value.toFixed(precision)}${unit ? ` ${unit}` : ""}`;
   }
 

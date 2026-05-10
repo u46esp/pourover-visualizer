@@ -2,6 +2,7 @@ import type { GrinderProfileId } from "./grinderProfile";
 
 export interface PouroverParams {
   pourRateGPerSec: number;
+  kettleTempC: number;
   waterAmountG: number;
   bedResistance: number;
   clogTendency: number;
