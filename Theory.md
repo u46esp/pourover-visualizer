@@ -2,7 +2,7 @@
 
 This document captures the **physics-oriented formulation** used to align implementation across modules and agents: porous-media hydraulics (Darcy), grind and bed-state coupling, extraction kinetics as a mass-transfer proxy, thermal effects, and extractives in outflow.
 
-It is **not** a substitute for product requirements. Feature scope and acceptance criteria live in `req/` (for example [PVIZ-007](req/PVIZ-007.md)). The runtime model remains **educational and heuristic** per [Architecture.md](Architecture.md); equations here are reference contracts, not claims of laboratory accuracy.
+It is **not** a substitute for product requirements. Feature scope and acceptance criteria live in `req/` (for example [PVIZ-007](req/PVIZ-007.md) for pourover temperature control). The runtime model remains **educational and heuristic** per [Architecture.md](Architecture.md); equations here are reference contracts, not claims of laboratory accuracy.
 
 ## Relationship To Architecture
 
@@ -126,6 +126,23 @@ k_\mathrm{ext,eff} = k_\mathrm{ext,ref}\,f_T(T), \qquad \mu = \mu(T)
 
 If full thermal simulation is absent, a documented simplified cooling profile (e.g. exponential decay of slurry temperature) is acceptable.
 
+### MVP constraint (PVIZ-007 — temperature control aspect)
+
+When implementing the pourover temperature-control ticket [req/PVIZ-007.md](req/PVIZ-007.md), use this **narrower** contract so theory and requirements stay aligned:
+
+- **Kettle pour temperature** is a user input `kettleTempC` in **`80\,^\circ\mathrm{C}..100\,^\circ\mathrm{C}`**.
+- **No thermal loss** to environment, dripper, paper, or air (`Q_\mathrm{loss} = 0` for this MVP).
+- **No heat capacity** from dripper body, filter paper, or coffee solids; only **water** in the control volume carries thermal energy.
+- **Dripper “coffee bed” readout** `T_\mathrm{bed}` (user label: `CoffeeBedTempC`) is the **mass-weighted mixed temperature** of water already in the dripper and new inflow at `kettleTempC`:
+
+\[
+T_\mathrm{next} = \frac{m_\mathrm{prev}\,T_\mathrm{prev} + m_\mathrm{in}\,T_\mathrm{in}}{\max(m_\mathrm{prev} + m_\mathrm{in},\,\varepsilon)}, \quad T_\mathrm{in} = \mathrm{kettleTempC}
+\]
+
+- With **no inflow** and **no loss**, \(T_\mathrm{bed}\) is **unchanged** between steps.
+
+Other sections of this document (e.g. cooling profiles, \(\mu(T)\)) describe **optional or future** extensions and must not be mixed into this MVP unless a requirement explicitly supersedes PVIZ-007.
+
 ---
 
 ## 5. Extractives In Outflow
@@ -155,4 +172,4 @@ M_\mathrm{ext} = M_\mathrm{ext,bed\,liquid} + M_\mathrm{ext,cup} + M_\mathrm{ext
 ## References
 
 - Project skill: [.cursor/skills/coffee-brewing-physics/SKILL.md](.cursor/skills/coffee-brewing-physics/SKILL.md)
-- Extraction feature requirements: [req/PVIZ-007.md](req/PVIZ-007.md)
+- Temperature control (pourover, MVP thermal assumptions): [req/PVIZ-007.md](req/PVIZ-007.md)
