@@ -1,6 +1,6 @@
 # PVIZ-005 Requirements: Pourover Coffee Grounds As Particles
 
-**Status:** Draft  
+**Status:** Done  
 **Area:** Simulation / visualization  
 **Architecture:** [Architecture.md](../Architecture.md)
 

@@ -1,6 +1,6 @@
 # PVIZ-004 Requirements: Coffee Brewing Visualizer Big Goal
 
-**Status:** Draft  
+**Status:** Done  
 **Area:** Product / simulation / visualization  
 **Architecture:** [Architecture.md](../Architecture.md)
 

@@ -1,6 +1,6 @@
 # PVIZ-006 Requirements: Pourover Water Stream Width And Smooth Flow-Out
 
-**Status:** Draft  
+**Status:** Done  
 **Area:** Visualization / animation polish  
 **Architecture:** [Architecture.md](../Architecture.md)
 

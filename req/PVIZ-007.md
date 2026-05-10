@@ -1,6 +1,6 @@
 # PVIZ-007 Requirements: Temperature Control Aspect For Pourover
 
-**Status:** Draft  
+**Status:** Done  
 **Area:** Simulation / thermal input and readout  
 **Architecture:** [Architecture.md](../Architecture.md)
 
