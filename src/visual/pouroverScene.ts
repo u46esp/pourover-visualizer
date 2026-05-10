@@ -171,7 +171,7 @@ export class PouroverScene {
     this.drawInputStream(kettleTip, water, state, streams, coneScale);
     this.drawOutputStream(bounds, mug, state, streams);
     this.drawMug(mug, state);
-    this.drawLabels(state, params);
+    this.drawLabels(state);
 
     ctx.restore();
   }
@@ -947,24 +947,29 @@ export class PouroverScene {
     ctx.restore();
   }
 
-  private drawLabels(state: PouroverSimulationState, params: PouroverParams): void {
+  private drawLabels(state: PouroverSimulationState): void {
     const ctx = this.ctx;
     const padX = 16;
-    const lineGap = 20;
+    const lineGap = 18;
     const x = this.width - padX;
     const midY = this.height * 0.5;
 
     ctx.save();
     ctx.textAlign = "right";
     ctx.font = "600 12px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "rgba(40, 104, 129, 0.88)";
-    ctx.fillText(`flow-in ${state.inflowRateGPerSec.toFixed(1)} g/s`, x, midY - lineGap);
 
-    ctx.fillStyle = "rgba(150, 78, 32, 0.9)";
-    ctx.fillText(`pour temp ${params.kettleTempC.toFixed(0)} °C`, x, midY);
+    const rows: { color: string; text: string }[] = [
+      { color: "rgba(40, 104, 129, 0.88)", text: `flow-in ${state.inflowRateGPerSec.toFixed(1)} g/s` },
+      { color: "rgba(150, 78, 32, 0.9)", text: `pour ${state.inflowTempC.toFixed(0)} °C` },
+      { color: "rgba(95, 110, 55, 0.92)", text: `bed ${state.coffeeBedTempC.toFixed(1)} °C` },
+      { color: "rgba(49, 90, 112, 0.88)", text: `flow-out ${state.outflowRateGPerSec.toFixed(1)} g/s` },
+    ];
 
-    ctx.fillStyle = "rgba(49, 90, 112, 0.88)";
-    ctx.fillText(`flow-out ${state.outflowRateGPerSec.toFixed(1)} g/s`, x, midY + lineGap);
+    rows.forEach((row, index) => {
+      const offset = (index - (rows.length - 1) / 2) * lineGap;
+      ctx.fillStyle = row.color;
+      ctx.fillText(row.text, x, midY + offset);
+    });
     ctx.restore();
   }
 

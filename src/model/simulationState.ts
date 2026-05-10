@@ -25,6 +25,9 @@ export interface PouroverSimulationState {
   inflowRateGPerSec: number;
   outflowRateGPerSec: number;
   waterLevel: number;
+  inflowTempC: number;
+  coffeeBedTempC: number;
+  tempDeltaInMinusBedC: number;
   flowIntensity: number;
   pressureIntensity: number;
   bedSaturation: number;

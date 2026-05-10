@@ -1,3 +1,4 @@
+import { DEFAULT_POUROVER_PARAMS, PARAM_LIMITS } from "../constants/simulation";
 import type { KettleTipState, PouroverParams, PouroverSimulationState } from "../model/simulationState";
 
 interface InternalState {
@@ -5,6 +6,7 @@ interface InternalState {
   pouredWaterG: number;
   waterInBrewerG: number;
   brewedCoffeeG: number;
+  brewerWaterTempC: number;
   inflowRateGPerSec: number;
   outflowRateGPerSec: number;
   bedSaturation: number;
@@ -27,6 +29,20 @@ export interface PouroverSimulator {
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 const lerp = (start: number, end: number, t: number) => start + (end - start) * t;
+const MASS_EPS_G = 1e-9;
+
+function clampKettleTempC(kettleTempC: number): number {
+  const { min, max } = PARAM_LIMITS.kettleTempC;
+  return Math.max(min, Math.min(max, kettleTempC));
+}
+
+function mixWaterTempsC(massPrevG: number, tempPrevC: number, massInG: number, tempInC: number): number {
+  const m = massPrevG + massInG;
+  if (m < MASS_EPS_G) {
+    return tempInC;
+  }
+  return (massPrevG * tempPrevC + massInG * tempInC) / m;
+}
 
 function createInitialState(): InternalState {
   return {
@@ -34,6 +50,7 @@ function createInitialState(): InternalState {
     pouredWaterG: 0,
     waterInBrewerG: 0,
     brewedCoffeeG: 0,
+    brewerWaterTempC: DEFAULT_POUROVER_PARAMS.kettleTempC,
     inflowRateGPerSec: 0,
     outflowRateGPerSec: 0,
     bedSaturation: 0,
@@ -77,9 +94,15 @@ export function createPouroverSimulator(): PouroverSimulator {
 
 function stepPourover(state: InternalState, params: PouroverParams, dtSec: number): void {
   const inputG = params.pourRateGPerSec * dtSec;
+  const tIn = clampKettleTempC(params.kettleTempC);
+  const m0 = state.waterInBrewerG;
+  const t0 = state.brewerWaterTempC;
+  const mAfterIn = m0 + inputG;
+  const tAfterIn = mixWaterTempsC(m0, t0, inputG, tIn);
+
   state.inflowRateGPerSec = inputG / dtSec;
   state.pouredWaterG += inputG;
-  state.waterInBrewerG += inputG;
+  state.waterInBrewerG = mAfterIn;
 
   const normalizedWater = clamp01(state.waterInBrewerG / Math.max(params.waterAmountG * 0.48, 1));
   const bedResistance = 0.45 + params.bedResistance * 1.75 + params.bedDepth * 0.55;
@@ -94,6 +117,11 @@ function stepPourover(state: InternalState, params: PouroverParams, dtSec: numbe
   state.outflowRateGPerSec = outputG / dtSec;
   state.waterInBrewerG -= outputG;
   state.brewedCoffeeG += outputG;
+
+  state.brewerWaterTempC = tAfterIn;
+  if (state.waterInBrewerG < MASS_EPS_G) {
+    state.brewerWaterTempC = tIn;
+  }
 
   const wettingRate = inputG > 0 || outputG > 0 ? 1.4 : 0.18;
   state.bedSaturation = clamp01(
@@ -128,6 +156,10 @@ function toPublicState(
   state: InternalState,
   params: PouroverParams,
 ): PouroverSimulationState {
+  const tIn = clampKettleTempC(params.kettleTempC);
+  const hasWater = state.waterInBrewerG > MASS_EPS_G;
+  const coffeeBedTempC = hasWater ? state.brewerWaterTempC : tIn;
+
   return {
     timeSec: state.timeSec,
     pouredWaterG: state.pouredWaterG,
@@ -136,6 +168,9 @@ function toPublicState(
     inflowRateGPerSec: state.inflowRateGPerSec,
     outflowRateGPerSec: state.outflowRateGPerSec,
     waterLevel: clamp01(state.waterInBrewerG / Math.max(params.waterAmountG * 0.48, 1)),
+    inflowTempC: tIn,
+    coffeeBedTempC,
+    tempDeltaInMinusBedC: tIn - coffeeBedTempC,
     flowIntensity: state.flowIntensity,
     pressureIntensity: state.pressureIntensity,
     bedSaturation: state.bedSaturation,
